@@ -5,3 +5,4 @@ Go through all the steps.
 ## AIND metadata dependencies
 ## Pybpod and scanimage dependencies
 # Usage
+![image](https://github.com/user-attachments/assets/348a11a1-eaf1-4a7d-ac49-e7906ec96fff)
