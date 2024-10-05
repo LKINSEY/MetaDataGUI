@@ -3,12 +3,12 @@ This GUI organizes and creates AIND metadata for 2p imaging (scanimage) + behavi
 
 
 Data is saved on VAST as follows:
--- /allen/aind/scratch/BCI/2p-raw
-    -- /mouseWRname
-        -/date
-            -/behavior
-            -/behaviorvideo
-            -/pophys
+-- /allen/aind/scratch/BCI/2p-raw \n
+\t -- /mouseWRname \n
+\t\t    -/date \n
+\t\t\t       -/behavior \n
+\t\t\t      -/behaviorvideo \n
+\t\t\t      -/pophys \n
 
 
 # Installation
