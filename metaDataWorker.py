@@ -199,7 +199,7 @@ class transferToScratchWorker(QRunnable):
         except ValueError:
             dateFileFormat = str(dateEnteredAs) #already entered as mmddyy
         sourceDir = localPath+f'/{thisMouse}/{dateFileFormat}'
-        destinationDir = scratchPath+f'/{thisMouse}/{dateFileFormat}'
+        destinationDir = scratchPath+f'/{thisMouse}/{dateFileFormat}/pophys'
         self.signals.nextStep.emit('Copying Raw Data To Scratch - Transfer Worker')
         
         if not os.path.exists(destinationDir):
