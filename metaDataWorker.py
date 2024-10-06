@@ -101,7 +101,7 @@ class metaDataWorker(QRunnable):
             self.signals.nextStep.emit('Extracting Behavior')
             rc = extract_behavior(WRname, sessionFolder, behavior_folder_staging)
             behavior_fname = f"{Path(sessionFolder).name}-bpod_zaber.npy"
-            step.stepComplete.emit('Behavior Data Extracted Successfully')
+            self.stepComplete.emit('Behavior Data Extracted Successfully')
         except Exception:
             self.signals.error.emit('Error extracting behavior -- check traceback -- aborting process')
             traceback.print_exc() 
@@ -199,7 +199,7 @@ class transferToScratchWorker(QRunnable):
         except ValueError:
             dateFileFormat = str(dateEnteredAs) #already entered as mmddyy
         sourceDir = localPath+f'/{thisMouse}/{dateFileFormat}'
-        destinationDir = scratchPath+f'/{thisMouse}/{dateFileFormat}'
+        destinationDir = scratchPath+f'/{thisMouse}/{dateFileFormat}/pophys'
         self.signals.nextStep.emit('Copying Raw Data To Scratch - Transfer Worker')
         
         if not os.path.exists(destinationDir):
