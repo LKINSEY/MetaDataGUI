@@ -9,6 +9,17 @@ from aind_metadata_mapper.bergamo.session import ( BergamoEtl,
                                                   RawImageInfo,
                                                   )
 import bergamo_rig
+
+#from REST API documentation
+from aind_data_transfer_service.configs.job_configs import ModalityConfigs, BasicUploadJobConfigs
+from pathlib import PurePosixPath
+import json
+import requests
+from aind_data_transfer_models.core import ModalityConfigs, BasicUploadJobConfigs, SubmitJobRequest
+from aind_data_schema_models.modalities import Modality
+from aind_data_schema_models.platforms import Platform
+######################################################
+
 from main_utility import *
 
 
@@ -214,19 +225,60 @@ class transferToScratchWorker(QRunnable):
             deltaT = (finishTime - startTime)#.strftime('%H:%M:%S.%f')
             self.signals.nextStep.emit(f'This took: {deltaT}')
         
+
+#currently this is just for uploading 1 job to cloud
+#this is a worker so that life is easier for ui and so that status updates get thrown back as signals
+class cloudTransferWorker(QRunnable):
+    def __init__(self, signals, sessionDict, mouseID, source):
+        super().__init__()
+        self.signals = signals
+        self.sessionDict = sessionDict
+        self.mouseID = mouseID
+    def run(self):
+        self.signals.nextStep.emit('Sending Data To The Cloud')
+        source_dir = PurePosixPath(self.sessionDict['destination'])
+        subject_id  = str(self.sessionDict['subject_id'])
+        acq_datetime = self.sessionDict['acquisition_datetime']
+        platform = Platform.BEHAVIOR
+        behavior_config = ModalityConfigs(modality=Modality.BEHAVIOR, source=(source_dir / "Behavior"))
+        behavior_videos_config = ModalityConfigs(modality=Modality.BEHAVIOR_VIDEOS, source=(source_dir / "Behavior videos"))
+        project_name  = self.sessionDict['project_name']
+        metadata_dir = self.sessionDict['destination'] #I think this is what it means for metadata dir..
+        s3_bucket = self.sessionDict['s3_bucket']
+        upload_job_configs = BasicUploadJobConfigs(
+          project_name=project_name,
+          s3_bucket=s3_bucket,
+          platform=platform,
+          subject_id=subject_id,
+          acq_datetime=acq_datetime,
+          modalities=[behavior_config, behavior_videos_config],
+          metadata_dir=metadata_dir
+        )
+        upload_jobs = [upload_job_configs]
+        #no need to email anyone for time being... but maybe make a secret dictionary that pairs emails with experimenters 
+        #that way whoever uploads to cloud after experiment, it can 
+        # user_email = "my_email_address"
+        # email_notification_types = ["fail"]
+        # submit_request = SubmitJobRequest(
+        #   upload_jobs=upload_jobs,
+        #   user_email=user_email,
+        #   email_notification_types=email_notification_types,
+        # )
+        post_request_content = json.loads(submit_request.model_dump_json(round_trip=True, exclude_none=True))
+        # Uncomment the following to submit the request
+        # submit_job_response = requests.post(url="http://aind-data-transfer-service/api/v1/submit_jobs", json=post_request_content)
+        # print(submit_job_response.status_code)
+        # print(submit_job_response.json())
         
-        
-        
-        
+        self.signals.stepComplete.emit('Data successfully uploaded to cloud!')
         
 
-
-
-
-
-
-# class justBehaviorWorker(QRunnable):
-#     def __init__(self, signals):
+        
+# class sleeperScatchTransfer(QRunnable):
+#     def __init(self, signals, paramDict):
 #         super().__init__()
 #         self.signals = signals
+#         self.paramDict = paramDict
 #     def run(self):
+#         print('Will run this at midnight, transfer all data to vast (no cloud uploads, cloud jobs done manually for now until something cool can be determined')
+        

@@ -24,7 +24,7 @@ from aind_metadata_mapper.bergamo.session import ( BergamoEtl,
                                                   )
 import bergamo_rig
 from main_utility import *
-from metaDataWorker import WorkerSignals, metaDataWorker, transferToScratchWorker
+from metaDataWorker import WorkerSignals, metaDataWorker, transferToScratchWorker, cloudTransferWorker
 
 today = str(date.today())
 print('Running Data Viewer on:', today)
@@ -267,8 +267,8 @@ class BergamoDataViewer(QMainWindow):
         self.pdfLoc = QLabel(alignment=Qt.AlignmentFlag.AlignCenter)
         
         #Make YAML Button
-        self.generateYAMLButton = QPushButton('Generate YAML')
-        self.generateYAMLButton.clicked.connect(self.makeYAML)
+        self.generateYAMLButton = QPushButton('Send Info To Cloud')
+        self.generateYAMLButton.clicked.connect(self.sendToCloud())
         
         #Organizing visualization section
         self.plotVisualizationLabel.setLayout(self.plotVisualizationLayout)
@@ -425,8 +425,8 @@ class BergamoDataViewer(QMainWindow):
     
     #Back to app functions
 
-    def makeYAML(self):
-        import yaml
+    def sendToCloud(self):
+        # import yaml
         
         #changing this path to be scratch instead of F:/Staging
         self.dataPathEntry = f"Y:/{self.WRName.toPlainText()}/{self.sessionDate.toPlainText()}"
@@ -437,9 +437,35 @@ class BergamoDataViewer(QMainWindow):
             # behavior_video_folders = Path.joinpath(Path(self.dataPathEntry),Path('behavior_video'))
             # md = load_metadata_from_folder(self.dataPathEntry)
             # session_folder = self.localDataStorage
+            # session_dict  ={'acquisition_datetime':datetime.fromisoformat(md['session']['session_start_time']), # from tiff files
+            #                 'capsule_id': '2103f231-8eec-45eb-bc54-c776dc33a0a7', # to trigger capsule
+            #                 'destination': self.scratchLoc.toPlainText(),
+            #                 'modalities': {'behavior':[str(behavior_folder_staging)], # paths to folder/file
+            #                             'pophys':[str(session_folder)],# paths to folder/file
+            #                             'behavior-videos':[str(behavior_video_folders)]},
+            #                 'mount': 'single-plane-ophys_731012_2024-08-13_23-49-46', #
+            #                 'name': 'bergamo_raw_{}_{}'.format(str(self.sessionData['subject_id']),datetime.fromisoformat(md['session']['session_start_time']).date()),#
+            #                 'platform': 'single-plane-ophys',
+            #                 'processor_full_name': str(self.sessionData['experimenter_full_name'][0]), #'experimenter name'
+            #                 'project_name': 'Brain Computer Interface',
+            #                 's3_bucket': 'private', #'scratch'
+            #                 #'schedule_time': None,#should be NOW2024-06-22 03:00:00
+            #                 'schemas': [str(Path(self.dataPathEntry).joinpath('session.json')),
+            #                             str(Path(self.dataPathEntry).joinpath('rig.json'))],#list of strings of paths to rig and session jsons'
+            #                 'subject_id': int(self.sessionData['subject_id']),
+            #             }
+
+            # # with open(Path('F:/Staging/').joinpath(Path('manifest_{}.yml'.format(Path(self.dataPathEntry).name))),'w') as yam:
+            # #     yaml.dump(session_dict,yam)
+
+            # with open(Path('C:/Users/ScanImage/aind_watchdog_service/manifests/').joinpath(Path('manifest_{}.yml'.format(Path(self.dataPathEntry).name))),'w') as yam:
+            #     yaml.dump(session_dict,yam)
+            
+            
+            ## Fun alternative: don't be fancy, just immediatly upload to s3
             session_dict  ={'acquisition_datetime':datetime.fromisoformat(md['session']['session_start_time']), # from tiff files
                             'capsule_id': '2103f231-8eec-45eb-bc54-c776dc33a0a7', # to trigger capsule
-                            'destination': self.scratchLoc.toPlainText(),
+                            'destination': self.dataPathEntry,
                             'modalities': {'behavior':[str(behavior_folder_staging)], # paths to folder/file
                                         'pophys':[str(session_folder)],# paths to folder/file
                                         'behavior-videos':[str(behavior_video_folders)]},
@@ -454,15 +480,17 @@ class BergamoDataViewer(QMainWindow):
                                         str(Path(self.dataPathEntry).joinpath('rig.json'))],#list of strings of paths to rig and session jsons'
                             'subject_id': int(self.sessionData['subject_id']),
                         }
-
-            # # with open(Path('F:/Staging/').joinpath(Path('manifest_{}.yml'.format(Path(self.dataPathEntry).name))),'w') as yam:
-            # #     yaml.dump(session_dict,yam)
-
-            # with open(Path('C:/Users/ScanImage/aind_watchdog_service/manifests/').joinpath(Path('manifest_{}.yml'.format(Path(self.dataPathEntry).name))),'w') as yam:
-            #     yaml.dump(session_dict,yam)
             
+            #set up signals
+            signals = WorkerSignals()
+            signals.nextStep.connect(self.onNextStep)
+            signals.stepComplete.connect(self.onStepComplete)
+            signals.allComplete.connect(self.onFullCompletion)
+            signals.transmitData.connect(self.onDataTransmission)
+            signals.error.connect(self.onError)
             
-            ## Fun alternative: don't be fancy, just immediatly upload to s3
+            #send off worker to do its thing
+            self.threadingPool.start(cloudTransferWorker(signals, self.session_dict, self.sessionData['subject_id'])
             
             
         except Exception:
