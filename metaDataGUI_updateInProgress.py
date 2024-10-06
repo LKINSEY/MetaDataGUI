@@ -112,10 +112,9 @@ class BergamoDataViewer(QMainWindow):
         for file in self.miceAvailable:
             if os.path.isdir(file):
                 mouseWRname = file.split('/')[-1]
-                if mouseWRname.count('_')>1:
-                    mice.append('_'.join(mouseWRname.split('_')[:-1])) #drop the last _
-                else:
-                    mice.append(mouseWRname.split('_')[0])
+                if 'B' in mouseWRname or 'C' in mouseWRname or 'p' in mouseWRname: #mouseWRname.count('_')>=1:
+                    mice.append(mouseWRname)#mouseWRname.split('_')[0])
+                    print(mouseWRname, mouseWRname.count('_'), mouseWRname.split('_')[0])
         uniqueMice = np.unique(mice)
         for mouse in uniqueMice:
             self.mouseNameDropDown.addItem(f'{mouse}')
@@ -347,9 +346,6 @@ class BergamoDataViewer(QMainWindow):
             err.showMessage('This is a new mouse! Enter ID and Process First Data')
             err.exec()
     def copyToScratch(self):
-        print('********************************************************')
-        print('*************** BARNACLES      *************************')
-        print('********************************************************')
         self.paramDict['subjectID']         = int(self.mouseID.toPlainText())
         self.paramDict['WRname']            = self.WRName.toPlainText()  
         self.paramDict['wavelength']        = int(self.imageWaveLength.toPlainText())
@@ -437,10 +433,10 @@ class BergamoDataViewer(QMainWindow):
         print(self.dataPathEntry)
         
         try:
-            behavior_folder_staging = Path.joinpath(Path(self.dataPathEntry),Path('behavior'))
-            behavior_video_folders = Path.joinpath(Path(self.dataPathEntry),Path('behavior_video'))
-            md = load_metadata_from_folder(self.dataPathEntry)
-            session_folder = self.localDataStorage
+            # behavior_folder_staging = Path.joinpath(Path(self.dataPathEntry),Path('behavior'))
+            # behavior_video_folders = Path.joinpath(Path(self.dataPathEntry),Path('behavior_video'))
+            # md = load_metadata_from_folder(self.dataPathEntry)
+            # session_folder = self.localDataStorage
             session_dict  ={'acquisition_datetime':datetime.fromisoformat(md['session']['session_start_time']), # from tiff files
                             'capsule_id': '2103f231-8eec-45eb-bc54-c776dc33a0a7', # to trigger capsule
                             'destination': self.scratchLoc.toPlainText(),
@@ -459,11 +455,16 @@ class BergamoDataViewer(QMainWindow):
                             'subject_id': int(self.sessionData['subject_id']),
                         }
 
-            # with open(Path('F:/Staging/').joinpath(Path('manifest_{}.yml'.format(Path(self.dataPathEntry).name))),'w') as yam:
-            #     yaml.dump(session_dict,yam)
+            # # with open(Path('F:/Staging/').joinpath(Path('manifest_{}.yml'.format(Path(self.dataPathEntry).name))),'w') as yam:
+            # #     yaml.dump(session_dict,yam)
 
-            with open(Path('C:/Users/ScanImage/aind_watchdog_service/manifests/').joinpath(Path('manifest_{}.yml'.format(Path(self.dataPathEntry).name))),'w') as yam:
-                yaml.dump(session_dict,yam)
+            # with open(Path('C:/Users/ScanImage/aind_watchdog_service/manifests/').joinpath(Path('manifest_{}.yml'.format(Path(self.dataPathEntry).name))),'w') as yam:
+            #     yaml.dump(session_dict,yam)
+            
+            
+            ## Fun alternative: don't be fancy, just immediatly upload to s3
+            
+            
         except Exception:
             err = QErrorMessage(self)
             err.showMessage('Could not generate YAML')

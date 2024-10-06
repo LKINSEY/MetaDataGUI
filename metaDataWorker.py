@@ -101,7 +101,7 @@ class metaDataWorker(QRunnable):
             self.signals.nextStep.emit('Extracting Behavior')
             rc = extract_behavior(WRname, sessionFolder, behavior_folder_staging)
             behavior_fname = f"{Path(sessionFolder).name}-bpod_zaber.npy"
-            self.stepComplete.emit('Behavior Data Extracted Successfully')
+            self.signals.stepComplete.emit('Behavior Data Extracted Successfully')
         except Exception:
             self.signals.error.emit('Error extracting behavior -- check traceback -- aborting process')
             traceback.print_exc() 
@@ -113,9 +113,9 @@ class metaDataWorker(QRunnable):
             rig_json = bergamo_rig.generate_rig_json()
             with open(Path(stagingMouseSessionPath).joinpath(Path('rig.json')), 'w') as json_file:
                 json_file.write(rig_json)
-            step.stepComplete.emit('Rig JSON Created Successfully!')
+            self.signals.stepComplete.emit('Rig JSON Created Successfully!')
         except Exception:
-            self.error.emit('Error generating rig json -- check traceback -- aborting process')
+            self.signals.error.emit('Error generating rig json -- check traceback -- aborting process')
             traceback.print_exc() 
             return
         
@@ -149,27 +149,27 @@ class metaDataWorker(QRunnable):
                                             trial_num                   = sum(goodtrials))
             etl_job = BergamoEtl(job_settings=user_settings,)
             session_metadata = etl_job.run_job()
-            step.stepComplete.emit('Session JSON Created Successfully!')
+            self.signals.stepComplete.emit('Session JSON Created Successfully!')
         except Exception:
-            self.error.emit('Error generating session json -- check traceback -- aborting process')
+            self.signals.error.emit('Error generating session json -- check traceback -- aborting process')
             traceback.print_exc() 
             return
         #Step 7: Stage Videos
         try:
             self.signals.nextStep.emit('Staging Videos')
             stagingVideos(behavior_data, behavior_video_folder_staging)
-            step.stepComplete.emit('Video Staged Successfully!')
+            self.signals.stepComplete.emit('Video Staged Successfully!')
         except Exception:
-            self.error.emit('Error Staging Videos -- check traceback -- aborting process')
+            self.signals.error.emit('Error Staging Videos -- check traceback -- aborting process')
             traceback.print_exc() 
             pass
         #Step 8: Create and display PDFs
         try:
             self.signals.nextStep.emit('Making PDFs')
             createPDFs(stagingMouseSessionPath, behavior_data, str(self.sessionData['subject_id']), dateEnteredAs)
-            step.stepComplete.emit('PDFs Successfully Made!')
+            self.signals.stepComplete.emit('PDFs Successfully Made!')
         except Exception:
-            self.error.emit('Error Generating PDFs -- check traceback -- aborting process')
+            self.signals.error.emit('Error Generating PDFs -- check traceback -- aborting process')
             traceback.print_exc() 
             return
 
@@ -209,13 +209,13 @@ class transferToScratchWorker(QRunnable):
             self.signals.nextStep.emit('Data Successfully copied to scratch')
             self.signals.nextStep.emit(f'This took: {deltaT}')
         else:
-            self.signals.allComplete.emit('Data Already Exists on Scratch')
+            self.signals.nextStep.emit('Data Already Exists on Scratch')
             finishTime = datetime.now()
             deltaT = (finishTime - startTime)#.strftime('%H:%M:%S.%f')
             self.signals.nextStep.emit(f'This took: {deltaT}')
         
         
-
+        
         
         
         

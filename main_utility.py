@@ -270,15 +270,20 @@ def prepareSessionJSON(behavior_folder_staging, behavior_fname):
         shutil.copyfile(f, behavior_folder_staging.joinpath(Path(f).name))
     goodtrials = []
     hittrials = []
-    for r,sfn in zip(behavior_data['reward_L'],behavior_data['scanimage_file_names']):
-        if type(sfn) == str:
-            goodtrials.append(False)
-        else:
-            goodtrials.append(True)
-        if len(r)==0:
-            hittrials.append(False)
-        else:
-            hittrials.append(True)
+    #going to assume if no behavior videos recorded, all trials are good...? is this a safe assumption?
+    if len(behavior_data['scanimage_file_names'])==20:#if == 'no movie files found'
+        goodtrials = np.full((1,len(behavior_data['reward_L'])), True)
+        hittrials = np.where((behavior_data['reward_L'])>0, True, False)
+    else:    
+        for r,sfn in zip(behavior_data['reward_L'],behavior_data['scanimage_file_names']):
+            if type(sfn) == str:
+                goodtrials.append(False)
+            else:
+                goodtrials.append(True)
+            if len(r)==0:
+                hittrials.append(False)
+            else:
+                hittrials.append(True)
     goodtrials = np.asarray(goodtrials)    
     hittrials = np.asarray(hittrials)    
     is_side_camera_active = False
