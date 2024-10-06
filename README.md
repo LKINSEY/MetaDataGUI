@@ -13,7 +13,14 @@ Data is saved on VAST as follows: <br>
 
 # Installation
 Go through all the steps.
+
+
 ## AIND metadata dependencies
+- aind_data_transfer_models
+- aind_data_schema_models
+- aind_data_transfer_service
+
+
 ## Pybpod and scanimage dependencies
 # Usage
 ![image](https://github.com/user-attachments/assets/348a11a1-eaf1-4a7d-ac49-e7906ec96fff)
