@@ -15,6 +15,16 @@ Data is saved on VAST as follows: <br>
           ├── /rig.json  
           └── /session.json  
 
+-- /allen/aind/scratch/BCI/2p-raw <br>
+&nbsp;&nbsp; -- /mouseWRname<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;    --/date <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;      --/behavior <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;     --/behaviorvideo <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;      --/pophys <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;      --/rig.json <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;      --/session.json <br>
+
+
 # Installation
 Go through all the steps.
 
