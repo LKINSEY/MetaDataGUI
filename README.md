@@ -5,16 +5,6 @@ This GUI organizes and creates AIND metadata for 2p imaging (scanimage) + behavi
 
 
 Data is saved on VAST as follows: <br>
-
-/allen/aind/scratch/BCI/2p-raw  
-  └── /mouseWRname  
-      └── /date  
-          ├── /behavior  
-          ├── /behaviorvideo  
-          ├── /pophys  
-          ├── /rig.json  
-          └── /session.json  
-
 -- /allen/aind/scratch/BCI/2p-raw <br>
 &nbsp;&nbsp; -- /mouseWRname<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;    --/date <br>
@@ -24,17 +14,26 @@ Data is saved on VAST as follows: <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;      --/rig.json <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;      --/session.json <br>
 
-
 # Installation
 Go through all the steps.
 
 
-## AIND metadata dependencies
-- aind_data_transfer_models
-- aind_data_schema_models
-- aind_data_transfer_service
+## Install AIND metadata dependencies
+```
+conda create -n codeocean python=3.11
+conda activate codeocean
+pip install codeocean, aind_data_transfer_models, aind_data_transfer_service, aind_data_schema_models
+```
+
+## Install Pybpod and scanimage dependencies
+```
+conda create --name bci_analysis python=3.8 -y
+conda activate bci_analysis
+git clone https://github.com/kpdaie/BCI_analysis.git
+cd BCI_analysis
+pip install -e .
+```
 
 
-## Pybpod and scanimage dependencies
 # Usage
 ![image](https://github.com/user-attachments/assets/348a11a1-eaf1-4a7d-ac49-e7906ec96fff)
