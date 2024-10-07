@@ -86,7 +86,7 @@ class metaDataWorker(QRunnable):
         
         #Step 2: check if sessionFolder exists
         stagingMouseSessionPath = f'Y:/{WRname}/{dateFileFormat}/'#turned into scratch location             #Path(stagingDir).joinpath( Path(f'{WRname}_{dateEnteredAs}'))
-        
+        rawDataPath = f'Y:/{WRname}/{dateFileFormat}/pophys'
         if os.path.exists(sessionFolder):  #~os.path.exists(stagingMouseSessionPath) and os.path.exists(sessionFolder): #check if behavior folders have been processed
             
             #Step 3: Make folders for each of the behavior types
@@ -110,7 +110,7 @@ class metaDataWorker(QRunnable):
 
         try:
             self.signals.nextStep.emit('Extracting Behavior')
-            rc = extract_behavior(WRname, sessionFolder, behavior_folder_staging)
+            rc = extract_behavior(WRname, rawDataPath, behavior_folder_staging)
             behavior_fname = f"{Path(sessionFolder).name}-bpod_zaber.npy"
             self.signals.stepComplete.emit('Behavior Data Extracted Successfully')
         except Exception:
