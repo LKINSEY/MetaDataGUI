@@ -114,7 +114,7 @@ class BergamoDataViewer(QMainWindow):
                 mouseWRname = file.split('/')[-1]
                 if 'B' in mouseWRname or 'C' in mouseWRname or 'p' in mouseWRname: #mouseWRname.count('_')>=1:
                     mice.append(mouseWRname)#mouseWRname.split('_')[0])
-                    print(mouseWRname, mouseWRname.count('_'), mouseWRname.split('_')[0])
+                    # print(mouseWRname, mouseWRname.count('_'), mouseWRname.split('_')[0])
         uniqueMice = np.unique(mice)
         for mouse in uniqueMice:
             self.mouseNameDropDown.addItem(f'{mouse}')
@@ -267,15 +267,15 @@ class BergamoDataViewer(QMainWindow):
         self.pdfLoc = QLabel(alignment=Qt.AlignmentFlag.AlignCenter)
         
         #Make YAML Button
-        self.generateYAMLButton = QPushButton('Send Info To Cloud')
-        self.generateYAMLButton.clicked.connect(self.sendToCloud())
+        self.sendToCloudButton = QPushButton('Send Info To Cloud')
+        self.sendToCloudButton.clicked.connect(self.sendToCloud)
         
         #Organizing visualization section
         self.plotVisualizationLabel.setLayout(self.plotVisualizationLayout)
         self.plotVisualizationLayout.addWidget(self.mouseDateDropdown) #date selection layer
         self.plotVisualizationLayout.addLayout(self.pageSelectionUI)   #page selection layer
         self.plotVisualizationLayout.addWidget(self.pdfLoc)
-        self.plotVisualizationLayout.addWidget(self.generateYAMLButton)
+        self.plotVisualizationLayout.addWidget(self.sendToCloudButton)
         #######################################################
         ##############  Organize Layout #######################
         #######################################################
@@ -370,6 +370,7 @@ class BergamoDataViewer(QMainWindow):
         self.threadingPool.start(transferToScratchWorker(signals, self.paramDict))
         
     def initiatePipeline(self):
+        print('INITIATING PIPELINE HERE ------------------------------------')
         #load textboxes into dictionary to give to worker
         self.paramDict['subjectID']         = int(self.mouseID.toPlainText())
         self.paramDict['WRname']            = self.WRName.toPlainText()  
@@ -490,7 +491,7 @@ class BergamoDataViewer(QMainWindow):
             signals.error.connect(self.onError)
             
             #send off worker to do its thing
-            self.threadingPool.start(cloudTransferWorker(signals, self.session_dict, self.sessionData['subject_id'])
+            self.threadingPool.start(cloudTransferWorker(signals, self.session_dict, self.sessionData['subject_id']))
             
             
         except Exception:

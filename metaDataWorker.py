@@ -11,13 +11,16 @@ from aind_metadata_mapper.bergamo.session import ( BergamoEtl,
 import bergamo_rig
 
 #from REST API documentation
-from aind_data_transfer_service.configs.job_configs import ModalityConfigs, BasicUploadJobConfigs
-from pathlib import PurePosixPath
-import json
-import requests
-from aind_data_transfer_models.core import ModalityConfigs, BasicUploadJobConfigs, SubmitJobRequest
-from aind_data_schema_models.modalities import Modality
-from aind_data_schema_models.platforms import Platform
+# to access these on local device run this command:
+    # pip install git+https://github.com/AllenNeuralDynamics/aind-data-transfer-service.git
+    # pip install git+https://github.com/AllenNeuralDynamics/aind-data-transfer-models.git
+# from aind_data_transfer_service.configs.job_configs import ModalityConfigs, BasicUploadJobConfigs
+# from pathlib import PurePosixPath
+# import json
+# import requests
+# from aind_data_transfer_models.core import ModalityConfigs, BasicUploadJobConfigs, SubmitJobRequest
+# from aind_data_schema_models.modalities import Modality
+# from aind_data_schema_models.platforms import Platform
 ######################################################
 
 from main_utility import *
@@ -57,7 +60,7 @@ class metaDataWorker(QRunnable):
         
         #I want the staging directory to be the scratch location, saved in mouse-->date-->data format, then in the mouse/date/ file, we can have actual behavior data
         stagingDir = 'Y:/'  #self.params.get('stagingDir') #will contain the init.json and mouseDict.json
-        sessionFolder = Path(self.params.get('pathToRawData') + f'/{WRname}/{dateFileFormat}') #this is same thing as above... but keeping it to change minimal code
+        sessionFolder = Path(self.params.get('pathToRawData') + f'/{WRname}/{dateFileFormat}') #Y:/BCI93/101724
 
         with open(Path(stagingDir + '/init.json'), 'r') as f:
             self.sessionData = json.load(f)
@@ -85,8 +88,8 @@ class metaDataWorker(QRunnable):
                 json.dump(self.mouseDict, f)
         
         #Step 2: check if sessionFolder exists
-        stagingMouseSessionPath = f'Y:/{WRname}/{dateFileFormat}/'#turned into scratch location             #Path(stagingDir).joinpath( Path(f'{WRname}_{dateEnteredAs}'))
-        
+        localRawData = f'F:/BCI/{WRname}/{dateFileFormat}/'#turned into scratch location             #Path(stagingDir).joinpath( Path(f'{WRname}_{dateEnteredAs}'))
+        stagingMouseSessionPath =  f'Y:/{WRname}/{dateFileFormat}/'
         if os.path.exists(sessionFolder):  #~os.path.exists(stagingMouseSessionPath) and os.path.exists(sessionFolder): #check if behavior folders have been processed
             
             #Step 3: Make folders for each of the behavior types
@@ -110,7 +113,7 @@ class metaDataWorker(QRunnable):
 
         try:
             self.signals.nextStep.emit('Extracting Behavior')
-            rc = extract_behavior(WRname, sessionFolder, behavior_folder_staging)
+            rc = extract_behavior(WRname, localRawData, behavior_folder_staging)
             behavior_fname = f"{Path(sessionFolder).name}-bpod_zaber.npy"
             self.signals.stepComplete.emit('Behavior Data Extracted Successfully')
         except Exception:
@@ -133,9 +136,11 @@ class metaDataWorker(QRunnable):
         #Step 6: Generate Session JSON
         try:
             self.signals.nextStep.emit('Generating Session JSON')
+            scratchInput = Path(self.params.get('pathToRawData') + f'/{WRname}/{dateFileFormat}/pophys')
+            print(scratchInput, 'TEST TEST TEST TEST TEST TEST TEST TEST')
             behavior_data, hittrials, goodtrials, behavior_task_name, is_side_camera_active, is_bottom_camera_active = prepareSessionJSON(behavior_folder_staging, behavior_fname)
-            user_settings = JobSettings(    input_source                = Path(sessionFolder),
-                                            output_directory            = Path(stagingMouseSessionPath),
+            user_settings = JobSettings(    input_source                = Path(scratchInput), #date folder local i.e. Y:/BCI93/101724/pophys
+                                            output_directory            = Path(stagingMouseSessionPath), #staging dir folder scratch  i.e. Y:/BCI93/101724
                                             experimenter_full_name      = [str(self.sessionData['experimenter_full_name'][0])],
                                             subject_id                  = str(int(self.sessionData['subject_id'])),
                                             imaging_laser_wavelength    = int(self.sessionData['data_streams'][0]['light_sources'][0]['wavelength']),
