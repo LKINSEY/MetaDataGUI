@@ -88,8 +88,13 @@ class metaDataWorker(QRunnable):
                 json.dump(self.mouseDict, f)
         
         #Step 2: check if sessionFolder exists
+<<<<<<< HEAD
         localRawData = f'F:/BCI/{WRname}/{dateFileFormat}/'#turned into scratch location             #Path(stagingDir).joinpath( Path(f'{WRname}_{dateEnteredAs}'))
         stagingMouseSessionPath =  f'Y:/{WRname}/{dateFileFormat}/'
+=======
+        stagingMouseSessionPath = f'Y:/{WRname}/{dateFileFormat}/'#turned into scratch location             #Path(stagingDir).joinpath( Path(f'{WRname}_{dateEnteredAs}'))
+        rawDataPath = f'Y:/{WRname}/{dateFileFormat}/pophys'
+>>>>>>> fe93bee7712becee7996148c876d0781d4e88404
         if os.path.exists(sessionFolder):  #~os.path.exists(stagingMouseSessionPath) and os.path.exists(sessionFolder): #check if behavior folders have been processed
             
             #Step 3: Make folders for each of the behavior types
@@ -113,7 +118,11 @@ class metaDataWorker(QRunnable):
 
         try:
             self.signals.nextStep.emit('Extracting Behavior')
+<<<<<<< HEAD
             rc = extract_behavior(WRname, localRawData, behavior_folder_staging)
+=======
+            rc = extract_behavior(WRname, rawDataPath, behavior_folder_staging)
+>>>>>>> fe93bee7712becee7996148c876d0781d4e88404
             behavior_fname = f"{Path(sessionFolder).name}-bpod_zaber.npy"
             self.signals.stepComplete.emit('Behavior Data Extracted Successfully')
         except Exception:
