@@ -26,9 +26,14 @@ pip install codeocean, aind_data_transfer_models, aind_data_transfer_service, ai
 ```
 
 ## Install Pybpod and scanimage dependencies
+go somewhere you want these codes to be
 ```
-conda create --name bci_analysis python=3.8 -y
-conda activate bci_analysis
+git clone https://github.com/rozmar/suite2p.git
+cd suite2p
+conda env create -f environment.yml
+conda activate bci_with_suite2p
+pip install -e .
+cd ..
 git clone https://github.com/kpdaie/BCI_analysis.git
 cd BCI_analysis
 pip install -e .
