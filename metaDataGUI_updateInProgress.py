@@ -93,8 +93,7 @@ class BergamoDataViewer(QMainWindow):
         mainLayout = QVBoxLayout()
         centralWidget.setLayout(mainLayout)
         
-        #Fun easter egg
-        self.movie = QMovie('C:/temp/pulp-fiction-wtf.gif')
+
         
         #######################################################
         ############## App Heading Stuff ######################
@@ -288,17 +287,15 @@ class BergamoDataViewer(QMainWindow):
         mainLayout.addWidget(self.mouseEntryLabel)
         mainLayout.addWidget(self.plotVisualizationLabel)
         
-        self.initializeGUI()
+
         self.show()
     
         #######################################################
         ##############  FUN-ctions ############################
         #######################################################
         
-    def initializeGUI(self):
-        self.pdfLoc.setMovie(self.movie)
-        self.movie.start()
-        # self.resize(self.movie.currentImage().size())
+
+
         
     def highlightTextBoxes(self):
         #we want to make all of the text boxes green until a user clicks in them, puts text there, then clicks out
