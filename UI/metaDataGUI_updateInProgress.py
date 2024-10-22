@@ -560,7 +560,7 @@ class BergamoDataViewer(QMainWindow):
         if len(self.WRName.toPlainText()) >1 and len(self.mouseDateDropdown.currentText()) >1:
             #Set Date Field as Date of Session Looking at
             self.sessionDate.setPlainText(sessionData_focus)               
-            fullPath = Path('F:/Staging/').joinpath(f'{self.WRName.toPlainText()}_{sessionData_focus}') # 'Y:/path to PDF
+            fullPath = Path('Y:/').joinpath(f'{self.WRName.toPlainText()}_{sessionData_focus}') # 'Y:/path to PDF
             print(fullPath)
             if self.selectedMouse !=  '-':
                 with open(fullPath.joinpath('session.json'), 'r') as f:
