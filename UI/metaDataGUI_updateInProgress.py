@@ -4,13 +4,11 @@ from PyQt6.QtGui import QPixmap
 import numpy as np
 import sys, zmq, os, subprocess, queue, json, shutil, traceback
 from glob import glob
-import matplotlib.pyplot as plt
-import socket as skt
 from pathlib import Path
 from datetime import datetime, date
 from PyQt6.QtWidgets import  QScrollArea, QListWidget, QMenuBar, QTabWidget, QCheckBox, QPushButton, QComboBox, QLineEdit, QHBoxLayout, QLabel, QErrorMessage, QApplication, QMenuBar, QMenu, QMainWindow, QTextEdit, QPushButton, QVBoxLayout, QWidget, QGroupBox, QInputDialog, QFileDialog
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QThreadPool
-from PyQt6.QtGui import QIntValidator, QAction, QImage, QPixmap, QColor, QPalette, QMovie
+from PyQt6.QtGui import QIntValidator, QAction, QImage, QPixmap, QColor, QPalette
 from PyQt6.QtWidgets import  QMenuBar, QLineEdit, QHBoxLayout, QLabel, QErrorMessage, QApplication, QMenuBar, QMenu, QMainWindow, QTextEdit, QPushButton, QVBoxLayout, QWidget, QGroupBox, QInputDialog, QFileDialog
 import pandas as pd
 from datetime import datetime, date
@@ -446,7 +444,7 @@ class BergamoDataViewer(QMainWindow):
             signals.error.connect(self.onError)
             
             #send off worker to do its thing
-            self.threadingPool.start(cloudTransferWorker(signals, self.session_dict, self.sessionData['subject_id']))
+            self.threadingPool.start(cloudTransferWorker(signals, self.paramDict))
             
             
         except Exception:
