@@ -384,6 +384,7 @@ class cloudTransferWorker(QRunnable):
         response.raise_for_status()
         
 
+        self.signals.nextStep.emit('Data Sent!')
         
 
         
