@@ -241,7 +241,7 @@ class cloudTransferWorker(QRunnable):
     def __init__(self, signals, params):
         super().__init__()
         self.signals = signals
-        self.params = sessionDict
+        self.params = params
     def run(self):
         self.signals.nextStep.emit('Sending Data To The Cloud')
         thisMouse = self.params.get('WRname')
