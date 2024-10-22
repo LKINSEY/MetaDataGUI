@@ -255,17 +255,17 @@ class cloudTransferWorker(QRunnable):
         
         user_email = "test@alleninstitute.org"
         email_notification_types = ["fail"]
-        behavior_source = f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior"
+        behavior_source = f"Y:/{thisMouse}/{dateEnteredAs}/behavior"
         behavior_videos_source = (
-            f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior_videos"
+            f"Y:/{thisMouse}/{dateEnteredAs}/behavior_videos"
         )
-        pophys_source = f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/pophys"
+        pophys_source = f"Y:/{thisMouse}/{dateEnteredAs}/pophys"
 
 
         print( os.path.exists(behavior_source), os.path.exists(behavior_videos_source), os.path.exists(pophys_source) )
       
         # Folder where rig.json and session.json are located
-        metadata_dir = f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}"
+        metadata_dir = f"Y:/{thisMouse}/{dateEnteredAs}"
         
         subject_id = str(thisMouse)
         acq_datetime = datetime.strptime(dateEnteredAs, "%m%d%y")
