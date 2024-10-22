@@ -238,48 +238,151 @@ class transferToScratchWorker(QRunnable):
 #currently this is just for uploading 1 job to cloud
 #this is a worker so that life is easier for ui and so that status updates get thrown back as signals
 class cloudTransferWorker(QRunnable):
-    def __init__(self, signals, sessionDict, mouseID, source):
+    def __init__(self, signals, params, mouseID, source):
         super().__init__()
         self.signals = signals
-        self.sessionDict = sessionDict
+        self.params = sessionDict
         self.mouseID = mouseID
     def run(self):
         self.signals.nextStep.emit('Sending Data To The Cloud')
-        source_dir = PurePosixPath(self.sessionDict['destination'])
-        subject_id  = str(self.sessionDict['subject_id'])
-        acq_datetime = self.sessionDict['acquisition_datetime']
-        platform = Platform.BEHAVIOR
-        behavior_config = ModalityConfigs(modality=Modality.BEHAVIOR, source=(source_dir / "Behavior"))
-        behavior_videos_config = ModalityConfigs(modality=Modality.BEHAVIOR_VIDEOS, source=(source_dir / "Behavior videos"))
-        project_name  = self.sessionDict['project_name']
-        metadata_dir = self.sessionDict['destination'] #I think this is what it means for metadata dir..
-        s3_bucket = self.sessionDict['s3_bucket']
-        upload_job_configs = BasicUploadJobConfigs(
-          project_name=project_name,
-          s3_bucket=s3_bucket,
-          platform=platform,
-          subject_id=subject_id,
-          acq_datetime=acq_datetime,
-          modalities=[behavior_config, behavior_videos_config],
-          metadata_dir=metadata_dir
-        )
-        upload_jobs = [upload_job_configs]
-        #no need to email anyone for time being... but maybe make a secret dictionary that pairs emails with experimenters 
-        #that way whoever uploads to cloud after experiment, it can 
-        # user_email = "my_email_address"
-        # email_notification_types = ["fail"]
-        # submit_request = SubmitJobRequest(
-        #   upload_jobs=upload_jobs,
-        #   user_email=user_email,
-        #   email_notification_types=email_notification_types,
-        # )
-        post_request_content = json.loads(submit_request.model_dump_json(round_trip=True, exclude_none=True))
-        # Uncomment the following to submit the request
-        # submit_job_response = requests.post(url="http://aind-data-transfer-service/api/v1/submit_jobs", json=post_request_content)
-        # print(submit_job_response.status_code)
-        # print(submit_job_response.json())
-        
-        self.signals.stepComplete.emit('Data successfully uploaded to cloud!')
+        thisMouse = self.params.get('WRname')
+        dateEnteredAs = self.params.get('date')
+
+
+
+
+      # For testing purposes, use dev url
+      service_url = "http://aind-data-transfer-service-dev/api/v1/submit_jobs"
+      
+      user_email = "test@alleninstitute.org"
+      email_notification_types = ["fail"]
+      behavior_source = f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior"
+      behavior_videos_source = (
+          f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior-videos"
+      )
+      pophys_source = f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/pophys"
+      
+      # Folder where rig.json and session.json are located
+      metadata_dir = f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}"
+      
+      subject_id = str(thisMouse)
+      acq_datetime = datetime.strptime(dateEnteredAs, "%m%d%y")
+      acq_datetime_str = acq_datetime.isoformat()
+      s3_prefix = (
+          f"single-plane-ophys_{subject_id}_"
+          f"{acq_datetime.strftime('%Y-%m-%d_%H-%M-%S')}"
+      )
+      
+      # This will be filled in with the data above. No need to modify.
+      contents = {
+          "job_type": "transform_and_upload",
+          "user_email": user_email,
+          "email_notification_types": email_notification_types,
+          "upload_jobs": [
+              {
+                  "user_email": user_email,
+                  "email_notification_types": email_notification_types,
+                  "project_name": "Brain Computer Interface",
+                  "s3_bucket": "private",
+                  "platform": {
+                      "name": "Single-plane optical physiology platform",
+                      "abbreviation": "single-plane-ophys",
+                  },
+                  "modalities": [
+                      {
+                          "modality": {
+                              "name": "Behavior",
+                              "abbreviation": "behavior",
+                          },
+                          "source": behavior_source,
+                          "compress_raw_data": False,
+                      },
+                      {
+                          "modality": {
+                              "name": "Behavior videos",
+                              "abbreviation": "behavior-videos",
+                          },
+                          "source": behavior_videos_source,
+                          "compress_raw_data": False,
+                      },
+                      {
+                          "modality": {
+                              "name": "Planar optical physiology",
+                              "abbreviation": "pophys",
+                          },
+                          "source": pophys_source,
+                          "compress_raw_data": False,
+                      },
+                  ],
+                  "subject_id": subject_id,
+                  "acq_datetime": acq_datetime_str,
+                  "metadata_dir": metadata_dir,
+                  "metadata_dir_force": False,
+                  "force_cloud_sync": False,
+                  "metadata_configs": {
+                      "job_settings_name": "GatherMetadata",
+                      "subject_settings": {
+                          "subject_id": subject_id,
+                          "metadata_service_path": "subject",
+                      },
+                      "raw_data_description_settings": {
+                          "name": s3_prefix,
+                          "project_name": "Brain Computer Interface",
+                          "modality": [
+                              {"name": "Behavior", "abbreviation": "behavior"},
+                              {
+                                  "name": "Behavior videos",
+                                  "abbreviation": "behavior-videos",
+                              },
+                              {
+                                  "name": "Planar optical physiology",
+                                  "abbreviation": "pophys",
+                              },
+                          ],
+                          "institution": {
+                              "name": "Allen Institute for Neural Dynamics",
+                              "abbreviation": "AIND",
+                              "registry": {
+                                  "name": "Research Organization Registry",
+                                  "abbreviation": "ROR",
+                              },
+                              "registry_identifier": "04szwah67",
+                          },
+                          "metadata_service_path": "funding",
+                      },
+                      "procedures_settings": {
+                          "subject_id": subject_id,
+                          "metadata_service_path": "procedures",
+                      },
+                      "directory_to_write_to": "stage",
+                      "metadata_dir": metadata_dir,
+                      "metadata_dir_force": False,
+                  },
+                  "trigger_capsule_configs": {
+                      "job_type": "singleplane_ophys",
+                      "bucket": "private",
+                      "prefix": s3_prefix,
+                      "asset_name": s3_prefix,
+                      "mount": s3_prefix,
+                      "results_suffix": "processed",
+                      "modalities": [
+                          {"name": "Behavior", "abbreviation": "behavior"},
+                          {
+                              "name": "Behavior videos",
+                              "abbreviation": "behavior-videos",
+                          },
+                          {
+                              "name": "Planar optical physiology",
+                              "abbreviation": "pophys",
+                          },
+                      ],
+                  },
+              }
+          ],
+      }
+      
+      response = requests.post(service_url, json=contents)
+      response.raise_for_status()
         
 
         
