@@ -23,6 +23,7 @@ Go through all the steps.
 conda create -n codeocean python=3.11
 conda activate codeocean
 pip install codeocean, aind_data_schema_models
+pip install git+https://github.com/AllenNeuralDynamics/aind-data-transfer-service.git
 ```
 maybe
 #aind_data_transfer_models, aind_data_transfer_service
