@@ -1,0 +1,10 @@
+PyQt6
+numpy
+glob
+matplotlib
+pathlib
+datetime
+pandas
+PyMuPDF
+codeocean
+aind_data_Schema_models
