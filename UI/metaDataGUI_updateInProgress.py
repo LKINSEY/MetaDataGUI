@@ -349,9 +349,7 @@ class BergamoDataViewer(QMainWindow):
         self.paramDict['imagingDepth']      = int(self.imagingDepth.toPlainText())
         self.paramDict['experimenterName']  = self.experimenterName.toPlainText()
         self.paramDict['notes']             = self.notes.toPlainText()
-        # self.paramDict['stagingDir']        = 'F:/Staging' #no longer local storage
         self.paramDict['date']              = self.sessionDate.toPlainText()
-        # self.paramDict['scratchLocation']   = self.scratchLoc.toPlainText()
         self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
         self.paramDict['pathToRawData']     = dataDir #'Y:/'
         self.paramDict['localPath']         = 'F:/BCI/'
@@ -375,9 +373,7 @@ class BergamoDataViewer(QMainWindow):
         self.paramDict['imagingDepth']      = int(self.imagingDepth.toPlainText())
         self.paramDict['experimenterName']  = self.experimenterName.toPlainText()
         self.paramDict['notes']             = self.notes.toPlainText()
-        # self.paramDict['stagingDir']        = 'F:/Staging' #no longer local storage
         self.paramDict['date']              = self.sessionDate.toPlainText()
-        # self.paramDict['scratchLocation']   = self.scratchLoc.toPlainText()
         self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
         self.paramDict['pathToRawData']     = dataDir #'Y:/'
         self.paramDict['localPath']         = 'F:/BCI/'
@@ -419,7 +415,6 @@ class BergamoDataViewer(QMainWindow):
         if index != -1:
             self.statusLust.addItem('Showing PDFs')
             self.combo_box.setCurrentIndex(index)
-            # self.loadPDF() # does the changing of the date index activate loadPDF?? lets find out
     
     #Back to app functions
 
@@ -431,53 +426,16 @@ class BergamoDataViewer(QMainWindow):
         print(self.dataPathEntry)
         
         try:
-            # behavior_folder_staging = Path.joinpath(Path(self.dataPathEntry),Path('behavior'))
-            # behavior_video_folders = Path.joinpath(Path(self.dataPathEntry),Path('behavior_video'))
-            # md = load_metadata_from_folder(self.dataPathEntry)
-            # session_folder = self.localDataStorage
-            # session_dict  ={'acquisition_datetime':datetime.fromisoformat(md['session']['session_start_time']), # from tiff files
-            #                 'capsule_id': '2103f231-8eec-45eb-bc54-c776dc33a0a7', # to trigger capsule
-            #                 'destination': self.scratchLoc.toPlainText(),
-            #                 'modalities': {'behavior':[str(behavior_folder_staging)], # paths to folder/file
-            #                             'pophys':[str(session_folder)],# paths to folder/file
-            #                             'behavior-videos':[str(behavior_video_folders)]},
-            #                 'mount': 'single-plane-ophys_731012_2024-08-13_23-49-46', #
-            #                 'name': 'bergamo_raw_{}_{}'.format(str(self.sessionData['subject_id']),datetime.fromisoformat(md['session']['session_start_time']).date()),#
-            #                 'platform': 'single-plane-ophys',
-            #                 'processor_full_name': str(self.sessionData['experimenter_full_name'][0]), #'experimenter name'
-            #                 'project_name': 'Brain Computer Interface',
-            #                 's3_bucket': 'private', #'scratch'
-            #                 #'schedule_time': None,#should be NOW2024-06-22 03:00:00
-            #                 'schemas': [str(Path(self.dataPathEntry).joinpath('session.json')),
-            #                             str(Path(self.dataPathEntry).joinpath('rig.json'))],#list of strings of paths to rig and session jsons'
-            #                 'subject_id': int(self.sessionData['subject_id']),
-            #             }
-
-            # # with open(Path('F:/Staging/').joinpath(Path('manifest_{}.yml'.format(Path(self.dataPathEntry).name))),'w') as yam:
-            # #     yaml.dump(session_dict,yam)
-
-            # with open(Path('C:/Users/ScanImage/aind_watchdog_service/manifests/').joinpath(Path('manifest_{}.yml'.format(Path(self.dataPathEntry).name))),'w') as yam:
-            #     yaml.dump(session_dict,yam)
-            
-            
-            ## Fun alternative: don't be fancy, just immediatly upload to s3
-            session_dict  ={'acquisition_datetime':datetime.fromisoformat(md['session']['session_start_time']), # from tiff files
-                            'capsule_id': '2103f231-8eec-45eb-bc54-c776dc33a0a7', # to trigger capsule
-                            'destination': self.dataPathEntry,
-                            'modalities': {'behavior':[str(behavior_folder_staging)], # paths to folder/file
-                                        'pophys':[str(session_folder)],# paths to folder/file
-                                        'behavior-videos':[str(behavior_video_folders)]},
-                            'mount': 'single-plane-ophys_731012_2024-08-13_23-49-46', #
-                            'name': 'bergamo_raw_{}_{}'.format(str(self.sessionData['subject_id']),datetime.fromisoformat(md['session']['session_start_time']).date()),#
-                            'platform': 'single-plane-ophys',
-                            'processor_full_name': str(self.sessionData['experimenter_full_name'][0]), #'experimenter name'
-                            'project_name': 'Brain Computer Interface',
-                            's3_bucket': 'private', #'scratch'
-                            #'schedule_time': None,#should be NOW2024-06-22 03:00:00
-                            'schemas': [str(Path(self.dataPathEntry).joinpath('session.json')),
-                                        str(Path(self.dataPathEntry).joinpath('rig.json'))],#list of strings of paths to rig and session jsons'
-                            'subject_id': int(self.sessionData['subject_id']),
-                        }
+            self.paramDict['subjectID']         = int(self.mouseID.toPlainText())
+            self.paramDict['WRname']            = self.WRName.toPlainText()  
+            self.paramDict['wavelength']        = int(self.imageWaveLength.toPlainText())
+            self.paramDict['imagingDepth']      = int(self.imagingDepth.toPlainText())
+            self.paramDict['experimenterName']  = self.experimenterName.toPlainText()
+            self.paramDict['notes']             = self.notes.toPlainText()
+            self.paramDict['date']              = self.sessionDate.toPlainText()
+            self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
+            self.paramDict['pathToRawData']     = dataDir #'Y:/'
+            self.paramDict['localPath']         = 'F:/BCI/'
             
             #set up signals
             signals = WorkerSignals()
@@ -493,7 +451,8 @@ class BergamoDataViewer(QMainWindow):
             
         except Exception:
             err = QErrorMessage(self)
-            err.showMessage('Could not generate YAML')
+            traceback.print_exc() 
+            err.showMessage('Issue sending off data to aws... check your data')
             err.exec()
     
     def updateMouseSelectionDropdown(self):
