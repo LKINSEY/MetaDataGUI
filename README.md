@@ -41,6 +41,15 @@ cd BCI_analysis
 pip install -e .
 ```
 
+## Open GUI
+where you want gui to be located (and preferably in miniconda)
+```
+conda activate codeocean
+git clone https://github.com/LKINSEY/MetaDataGUI.git
+cd metaDataGUI\UI
+python metaDataGUI_updateInProgress.py
+```
+
 
 # Usage
 ![image](https://github.com/user-attachments/assets/348a11a1-eaf1-4a7d-ac49-e7906ec96fff)
