@@ -248,7 +248,7 @@ class cloudTransferWorker(QRunnable):
         dateEnteredAs = self.params.get('date')
 
 
-
+        print(dateEnteredAs)
 
         # For testing purposes, use dev url
         service_url = "http://aind-data-transfer-service-dev/api/v1/submit_jobs"
@@ -260,7 +260,10 @@ class cloudTransferWorker(QRunnable):
             f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior_videos"
         )
         pophys_source = f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/pophys"
-        
+
+
+        print( os.path.exists(behavior_source), os.path.exists(beahvior_videos_source), os.path.exists(pophys_source) )
+      
         # Folder where rig.json and session.json are located
         metadata_dir = f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}"
         
