@@ -594,11 +594,11 @@ class BergamoDataViewer(QMainWindow):
                 if self.pageSelect ==3:
                     pixmap3 = QPixmap.fromImage(image3)
                     self.pdfLoc.setPixmap(pixmap3)
-            except Exception as e:
-                err = QErrorMessage(self)
-                traceback.print_exc() 
-                err.showMessage('Refusing to load PDF because PDF does not have all of the necessary pages...')
-                err.exec()
+              except Exception as e:
+                  err = QErrorMessage(self)
+                  traceback.print_exc() 
+                  err.showMessage('Refusing to load PDF because PDF does not have all of the necessary pages...')
+                  err.exec()
 
 
 
