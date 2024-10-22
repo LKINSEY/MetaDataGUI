@@ -51,6 +51,9 @@ cd metaDataGUI\UI
 python metaDataGUI_updateInProgress.py
 ```
 
+##AIND USAGE ONLY
+map: \\allen\aind\scratch\BCI\2p-raw to Y: drive
+
 
 # Usage
 ![image](https://github.com/user-attachments/assets/348a11a1-eaf1-4a7d-ac49-e7906ec96fff)
