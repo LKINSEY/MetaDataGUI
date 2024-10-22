@@ -262,7 +262,7 @@ class cloudTransferWorker(QRunnable):
         pophys_source = f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/pophys"
 
 
-        print( os.path.exists(behavior_source), os.path.exists(beahvior_videos_source), os.path.exists(pophys_source) )
+        print( os.path.exists(behavior_source), os.path.exists(behavior_videos_source), os.path.exists(pophys_source) )
       
         # Folder where rig.json and session.json are located
         metadata_dir = f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}"
