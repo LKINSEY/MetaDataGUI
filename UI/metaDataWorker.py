@@ -1,5 +1,5 @@
 from PyQt6.QtCore import QRunnable, pyqtSignal, QObject, QThreadPool
-import traceback, os, json, traceback, shutil
+import traceback, os, json, traceback, shutil, requests
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
