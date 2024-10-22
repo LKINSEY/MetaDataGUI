@@ -238,11 +238,10 @@ class transferToScratchWorker(QRunnable):
 #currently this is just for uploading 1 job to cloud
 #this is a worker so that life is easier for ui and so that status updates get thrown back as signals
 class cloudTransferWorker(QRunnable):
-    def __init__(self, signals, params, mouseID, source):
+    def __init__(self, signals, params):
         super().__init__()
         self.signals = signals
         self.params = sessionDict
-        self.mouseID = mouseID
     def run(self):
         self.signals.nextStep.emit('Sending Data To The Cloud')
         thisMouse = self.params.get('WRname')
