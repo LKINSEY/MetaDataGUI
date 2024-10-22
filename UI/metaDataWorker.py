@@ -257,7 +257,7 @@ class cloudTransferWorker(QRunnable):
         email_notification_types = ["fail"]
         behavior_source = f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior"
         behavior_videos_source = (
-            f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior-videos"
+            f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior_videos"
         )
         pophys_source = f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/pophys"
         
