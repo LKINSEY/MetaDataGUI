@@ -563,6 +563,7 @@ class BergamoDataViewer(QMainWindow):
             fullPath = Path('Y:/').joinpath(f'{self.WRName.toPlainText()}/{sessionData_focus}') # 'Y:/path to PDF
             print(fullPath)
             if self.selectedMouse !=  '-':
+              try:
                 with open(fullPath.joinpath('session.json'), 'r') as f:
                     self.sessionJSON = json.load(f)
                 #update the other text fields appropriately
@@ -572,7 +573,7 @@ class BergamoDataViewer(QMainWindow):
                 self.experimenterName.setPlainText(str(self.sessionJSON['experimenter_full_name'][0])),
                 self.notes.setPlainText(str(self.sessionJSON['notes']))
     
-            try:
+            
                 doc = fitz.open(fullPath.joinpath('session_plots.pdf'))
                 page1 = doc.load_page(0)
                 page2 = doc.load_page(1)
