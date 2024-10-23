@@ -262,7 +262,7 @@ class cloudTransferWorker(QRunnable):
         # Folder where rig.json and session.json are located
         metadata_dir = PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}")
         
-        subject_id = str(thisMouse)
+        subject_id = int(self.params['subject_id'])
         acq_datetime = datetime.datetime.now() #using time as upload since datetime of acq is not available in this context
         acq_datetime_str = acq_datetime.isoformat()
         s3_prefix = (
