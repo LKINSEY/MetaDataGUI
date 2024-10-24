@@ -255,12 +255,12 @@ class cloudTransferWorker(QRunnable):
         
         user_email = "test@alleninstitute.org"
         email_notification_types = ["fail"]
-        behavior_source = PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior")
-        behavior_videos_source = PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior_video")
-        pophys_source = PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/pophys")
+        behavior_source          = str(PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior"))
+        behavior_videos_source   = str(PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior_video"))
+        pophys_source            = str(PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/pophys"))
       
         # Folder where rig.json and session.json are located
-        metadata_dir = PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}")
+        metadata_dir             = str(PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}"))
         
         subject_id = int(self.params['subjectID'])
         acq_datetime = datetime.now() #using time as upload since datetime of acq is not available in this context
