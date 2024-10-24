@@ -251,7 +251,7 @@ class cloudTransferWorker(QRunnable):
         print(dateEnteredAs)
 
         # For testing purposes, use dev url
-        service_url = "http://aind-data-transfer-service-dev/api/v1/submit_jobs"
+        service_url = "http://aind-data-transfer-service/api/v1/submit_jobs"
         
         user_email = "test@alleninstitute.org"
         email_notification_types = ["fail"]
