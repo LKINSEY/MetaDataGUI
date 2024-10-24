@@ -4,13 +4,11 @@ from PyQt6.QtGui import QPixmap
 import numpy as np
 import sys, zmq, os, subprocess, queue, json, shutil, traceback
 from glob import glob
-import matplotlib.pyplot as plt
-import socket as skt
 from pathlib import Path
 from datetime import datetime, date
 from PyQt6.QtWidgets import  QScrollArea, QListWidget, QMenuBar, QTabWidget, QCheckBox, QPushButton, QComboBox, QLineEdit, QHBoxLayout, QLabel, QErrorMessage, QApplication, QMenuBar, QMenu, QMainWindow, QTextEdit, QPushButton, QVBoxLayout, QWidget, QGroupBox, QInputDialog, QFileDialog
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QThreadPool
-from PyQt6.QtGui import QIntValidator, QAction, QImage, QPixmap, QColor, QPalette, QMovie
+from PyQt6.QtGui import QIntValidator, QAction, QImage, QPixmap, QColor, QPalette
 from PyQt6.QtWidgets import  QMenuBar, QLineEdit, QHBoxLayout, QLabel, QErrorMessage, QApplication, QMenuBar, QMenu, QMainWindow, QTextEdit, QPushButton, QVBoxLayout, QWidget, QGroupBox, QInputDialog, QFileDialog
 import pandas as pd
 from datetime import datetime, date
@@ -349,9 +347,7 @@ class BergamoDataViewer(QMainWindow):
         self.paramDict['imagingDepth']      = int(self.imagingDepth.toPlainText())
         self.paramDict['experimenterName']  = self.experimenterName.toPlainText()
         self.paramDict['notes']             = self.notes.toPlainText()
-        # self.paramDict['stagingDir']        = 'F:/Staging' #no longer local storage
         self.paramDict['date']              = self.sessionDate.toPlainText()
-        # self.paramDict['scratchLocation']   = self.scratchLoc.toPlainText()
         self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
         self.paramDict['pathToRawData']     = dataDir #'Y:/'
         self.paramDict['localPath']         = 'F:/BCI/'
@@ -375,9 +371,7 @@ class BergamoDataViewer(QMainWindow):
         self.paramDict['imagingDepth']      = int(self.imagingDepth.toPlainText())
         self.paramDict['experimenterName']  = self.experimenterName.toPlainText()
         self.paramDict['notes']             = self.notes.toPlainText()
-        # self.paramDict['stagingDir']        = 'F:/Staging' #no longer local storage
         self.paramDict['date']              = self.sessionDate.toPlainText()
-        # self.paramDict['scratchLocation']   = self.scratchLoc.toPlainText()
         self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
         self.paramDict['pathToRawData']     = dataDir #'Y:/'
         self.paramDict['localPath']         = 'F:/BCI/'
@@ -419,7 +413,6 @@ class BergamoDataViewer(QMainWindow):
         if index != -1:
             self.statusLust.addItem('Showing PDFs')
             self.combo_box.setCurrentIndex(index)
-            # self.loadPDF() # does the changing of the date index activate loadPDF?? lets find out
     
     #Back to app functions
 
@@ -428,56 +421,22 @@ class BergamoDataViewer(QMainWindow):
         
         #changing this path to be scratch instead of F:/Staging
         self.dataPathEntry = f"Y:/{self.WRName.toPlainText()}/{self.sessionDate.toPlainText()}"
-        print(self.dataPathEntry)
+        with open(self.dataPathEntry + '/session.json', 'r') as f:
+          sessionParams = json.load(f)
+        print(sessionParams['session_start_time'])
         
         try:
-            # behavior_folder_staging = Path.joinpath(Path(self.dataPathEntry),Path('behavior'))
-            # behavior_video_folders = Path.joinpath(Path(self.dataPathEntry),Path('behavior_video'))
-            # md = load_metadata_from_folder(self.dataPathEntry)
-            # session_folder = self.localDataStorage
-            # session_dict  ={'acquisition_datetime':datetime.fromisoformat(md['session']['session_start_time']), # from tiff files
-            #                 'capsule_id': '2103f231-8eec-45eb-bc54-c776dc33a0a7', # to trigger capsule
-            #                 'destination': self.scratchLoc.toPlainText(),
-            #                 'modalities': {'behavior':[str(behavior_folder_staging)], # paths to folder/file
-            #                             'pophys':[str(session_folder)],# paths to folder/file
-            #                             'behavior-videos':[str(behavior_video_folders)]},
-            #                 'mount': 'single-plane-ophys_731012_2024-08-13_23-49-46', #
-            #                 'name': 'bergamo_raw_{}_{}'.format(str(self.sessionData['subject_id']),datetime.fromisoformat(md['session']['session_start_time']).date()),#
-            #                 'platform': 'single-plane-ophys',
-            #                 'processor_full_name': str(self.sessionData['experimenter_full_name'][0]), #'experimenter name'
-            #                 'project_name': 'Brain Computer Interface',
-            #                 's3_bucket': 'private', #'scratch'
-            #                 #'schedule_time': None,#should be NOW2024-06-22 03:00:00
-            #                 'schemas': [str(Path(self.dataPathEntry).joinpath('session.json')),
-            #                             str(Path(self.dataPathEntry).joinpath('rig.json'))],#list of strings of paths to rig and session jsons'
-            #                 'subject_id': int(self.sessionData['subject_id']),
-            #             }
-
-            # # with open(Path('F:/Staging/').joinpath(Path('manifest_{}.yml'.format(Path(self.dataPathEntry).name))),'w') as yam:
-            # #     yaml.dump(session_dict,yam)
-
-            # with open(Path('C:/Users/ScanImage/aind_watchdog_service/manifests/').joinpath(Path('manifest_{}.yml'.format(Path(self.dataPathEntry).name))),'w') as yam:
-            #     yaml.dump(session_dict,yam)
-            
-            
-            ## Fun alternative: don't be fancy, just immediatly upload to s3
-            session_dict  ={'acquisition_datetime':datetime.fromisoformat(md['session']['session_start_time']), # from tiff files
-                            'capsule_id': '2103f231-8eec-45eb-bc54-c776dc33a0a7', # to trigger capsule
-                            'destination': self.dataPathEntry,
-                            'modalities': {'behavior':[str(behavior_folder_staging)], # paths to folder/file
-                                        'pophys':[str(session_folder)],# paths to folder/file
-                                        'behavior-videos':[str(behavior_video_folders)]},
-                            'mount': 'single-plane-ophys_731012_2024-08-13_23-49-46', #
-                            'name': 'bergamo_raw_{}_{}'.format(str(self.sessionData['subject_id']),datetime.fromisoformat(md['session']['session_start_time']).date()),#
-                            'platform': 'single-plane-ophys',
-                            'processor_full_name': str(self.sessionData['experimenter_full_name'][0]), #'experimenter name'
-                            'project_name': 'Brain Computer Interface',
-                            's3_bucket': 'private', #'scratch'
-                            #'schedule_time': None,#should be NOW2024-06-22 03:00:00
-                            'schemas': [str(Path(self.dataPathEntry).joinpath('session.json')),
-                                        str(Path(self.dataPathEntry).joinpath('rig.json'))],#list of strings of paths to rig and session jsons'
-                            'subject_id': int(self.sessionData['subject_id']),
-                        }
+            self.paramDict['subjectID']         = int(self.mouseID.toPlainText())
+            self.paramDict['WRname']            = self.WRName.toPlainText()  
+            self.paramDict['wavelength']        = int(self.imageWaveLength.toPlainText())
+            self.paramDict['imagingDepth']      = int(self.imagingDepth.toPlainText())
+            self.paramDict['experimenterName']  = self.experimenterName.toPlainText()
+            self.paramDict['notes']             = self.notes.toPlainText()
+            self.paramDict['date']              = self.sessionDate.toPlainText()
+            self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
+            self.paramDict['pathToRawData']     = dataDir #'Y:/'
+            self.paramDict['localPath']         = 'F:/BCI/'
+            self.paramDict['sessionStart'] = sessionParams['session_start_time']
             
             #set up signals
             signals = WorkerSignals()
@@ -488,12 +447,13 @@ class BergamoDataViewer(QMainWindow):
             signals.error.connect(self.onError)
             
             #send off worker to do its thing
-            self.threadingPool.start(cloudTransferWorker(signals, self.session_dict, self.sessionData['subject_id']))
+            self.threadingPool.start(cloudTransferWorker(signals, self.paramDict))
             
             
         except Exception:
             err = QErrorMessage(self)
-            err.showMessage('Could not generate YAML')
+            traceback.print_exc() 
+            err.showMessage('Issue sending off data to aws... check your data')
             err.exec()
     
     def updateMouseSelectionDropdown(self):
@@ -560,9 +520,10 @@ class BergamoDataViewer(QMainWindow):
         if len(self.WRName.toPlainText()) >1 and len(self.mouseDateDropdown.currentText()) >1:
             #Set Date Field as Date of Session Looking at
             self.sessionDate.setPlainText(sessionData_focus)               
-            fullPath = Path('F:/Staging/').joinpath(f'{self.WRName.toPlainText()}_{sessionData_focus}') # 'Y:/path to PDF
+            fullPath = Path('Y:/').joinpath(f'{self.WRName.toPlainText()}/{sessionData_focus}') # 'Y:/path to PDF
             print(fullPath)
             if self.selectedMouse !=  '-':
+              try:
                 with open(fullPath.joinpath('session.json'), 'r') as f:
                     self.sessionJSON = json.load(f)
                 #update the other text fields appropriately
@@ -572,7 +533,7 @@ class BergamoDataViewer(QMainWindow):
                 self.experimenterName.setPlainText(str(self.sessionJSON['experimenter_full_name'][0])),
                 self.notes.setPlainText(str(self.sessionJSON['notes']))
     
-            try:
+            
                 doc = fitz.open(fullPath.joinpath('session_plots.pdf'))
                 page1 = doc.load_page(0)
                 page2 = doc.load_page(1)
@@ -593,11 +554,11 @@ class BergamoDataViewer(QMainWindow):
                 if self.pageSelect ==3:
                     pixmap3 = QPixmap.fromImage(image3)
                     self.pdfLoc.setPixmap(pixmap3)
-            except Exception as e:
-                err = QErrorMessage(self)
-                traceback.print_exc() 
-                err.showMessage('Refusing to load PDF because PDF does not have all of the necessary pages...')
-                err.exec()
+              except Exception as e:
+                  err = QErrorMessage(self)
+                  traceback.print_exc() 
+                  err.showMessage('Refusing to load PDF because PDF does not have all of the necessary pages...')
+                  err.exec()
 
 
 

@@ -7,4 +7,8 @@ datetime
 pandas
 PyMuPDF
 codeocean
+json
+shutil
+typing
+scanimage-tiff-reader
 aind_data_Schema_models

@@ -23,6 +23,7 @@ Go through all the steps.
 conda create -n codeocean python=3.11
 conda activate codeocean
 pip install codeocean, aind_data_schema_models
+pip install git+https://github.com/AllenNeuralDynamics/aind-data-transfer-service.git
 ```
 maybe
 #aind_data_transfer_models, aind_data_transfer_service
@@ -40,6 +41,18 @@ git clone https://github.com/kpdaie/BCI_analysis.git
 cd BCI_analysis
 pip install -e .
 ```
+
+## Open GUI
+where you want gui to be located (and preferably in miniconda)
+```
+conda activate codeocean
+git clone https://github.com/LKINSEY/MetaDataGUI.git
+cd metaDataGUI\UI
+python metaDataGUI_updateInProgress.py
+```
+
+##AIND USAGE ONLY
+map: \\allen\aind\scratch\BCI\2p-raw to Y: drive
 
 
 # Usage
