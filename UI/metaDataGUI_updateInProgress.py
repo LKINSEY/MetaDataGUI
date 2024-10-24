@@ -421,7 +421,9 @@ class BergamoDataViewer(QMainWindow):
         
         #changing this path to be scratch instead of F:/Staging
         self.dataPathEntry = f"Y:/{self.WRName.toPlainText()}/{self.sessionDate.toPlainText()}"
-        print(self.dataPathEntry)
+        with open(self.dataPathEntry + '/session.json', 'r') as f:
+          sessionParams = json.load(f)
+        print(sessionParams['session_start_time'])
         
         try:
             self.paramDict['subjectID']         = int(self.mouseID.toPlainText())
@@ -434,6 +436,7 @@ class BergamoDataViewer(QMainWindow):
             self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
             self.paramDict['pathToRawData']     = dataDir #'Y:/'
             self.paramDict['localPath']         = 'F:/BCI/'
+            self.paramDict['sessionSart'] = sessionParams['session_start_time']
             
             #set up signals
             signals = WorkerSignals()
