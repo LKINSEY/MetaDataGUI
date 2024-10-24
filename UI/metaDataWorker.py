@@ -263,7 +263,7 @@ class cloudTransferWorker(QRunnable):
         metadata_dir             = str(PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}"))
         
         subject_id = int(self.params['subjectID'])
-        acq_datetime = self.params['sessionStart']
+        acq_datetime = datetime.strptime(self.params['sessionStart'],'%Y-%m-%dT%H:%M:%S.%f%z')
         acq_datetime_str = acq_datetime.isoformat()
         s3_prefix = (
             f"single-plane-ophys_{subject_id}_"
