@@ -195,7 +195,7 @@ class metaDataWorker(QRunnable):
 
         #Complete!
         self.signals.transmitData.emit( (WRname, dateEnteredAs))
-        self.signals.allComplete.emit('Ready for YML Confirmation')
+        self.signals.nextStep.emit(f'{WRname} is complete!')
         return
 
 
