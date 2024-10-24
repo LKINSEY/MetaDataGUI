@@ -436,7 +436,7 @@ class BergamoDataViewer(QMainWindow):
             self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
             self.paramDict['pathToRawData']     = dataDir #'Y:/'
             self.paramDict['localPath']         = 'F:/BCI/'
-            self.paramDict['sessionSart'] = sessionParams['session_start_time']
+            self.paramDict['sessionStart'] = sessionParams['session_start_time']
             
             #set up signals
             signals = WorkerSignals()
