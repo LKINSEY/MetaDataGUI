@@ -264,7 +264,7 @@ class cloudTransferWorker(QRunnable):
         
         subject_id = str(self.params['subjectID'])
         acq_datetime = datetime.strptime(self.params['sessionStart'],'%Y-%m-%dT%H:%M:%S.%f%z')
-        acq_datetime_str = acq_datetime.isoformat()
+        acq_datetime_str = acq_datetime.strftime('%Y-%m-%d %H:%M:%S')#'%YYYY-%MM-%DD %HH:%mm:%ss')
         s3_prefix = (
             f"single-plane-ophys_{subject_id}_"
             f"{acq_datetime.strftime('%Y-%m-%d_%H-%M-%S')}"
