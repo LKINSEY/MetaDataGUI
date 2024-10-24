@@ -263,13 +263,13 @@ class cloudTransferWorker(QRunnable):
         metadata_dir             = str(PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}"))
         
         subject_id = int(self.params['subjectID'])
-        acq_datetime = datetime.now() #using time as upload since datetime of acq is not available in this context
+        acq_datetime = self.params['sessionStart']
         acq_datetime_str = acq_datetime.isoformat()
         s3_prefix = (
             f"single-plane-ophys_{subject_id}_"
             f"{acq_datetime.strftime('%Y-%m-%d_%H-%M-%S')}"
         )
-        
+        print('This is the S3 prefix', s3_prefix)
         # This will be filled in with the data above. No need to modify.
         contents = {
               "job_type": "transform_and_upload",
