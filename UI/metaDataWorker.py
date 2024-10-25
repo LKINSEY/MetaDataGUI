@@ -142,7 +142,7 @@ class metaDataWorker(QRunnable):
             self.signals.nextStep.emit('Generating Session JSON')
             scratchInput = Path(self.params.get('pathToRawData') + f'/{WRname}/{dateFileFormat}/pophys')
             print(scratchInput, 'TEST TEST TEST TEST TEST TEST TEST TEST')
-            behavior_data, hittrials, goodtrials, behavior_task_name, is_side_camera_active, is_bottom_camera_active = prepareSessionJSON(behavior_folder_staging, behavior_fname)
+            behavior_data, hittrials, goodtrials, behavior_task_name, is_side_camera_active, is_bottom_camera_active,starting_lickport_position = prepareSessionJSON(behavior_folder_staging, behavior_fname)
             user_settings = JobSettings(    input_source                = Path(scratchInput), #date folder local i.e. Y:/BCI93/101724/pophys
                                             output_directory            = Path(stagingMouseSessionPath), #staging dir folder scratch  i.e. Y:/BCI93/101724
                                             experimenter_full_name      = [str(self.sessionData['experimenter_full_name'][0])],
@@ -158,9 +158,7 @@ class metaDataWorker(QRunnable):
                                             imaging_laser_name          = "Chameleon Laser",
                                             photostim_laser_name        = "Monaco Laser",
                                             photostim_laser_wavelength  =  1035,
-                                            starting_lickport_position  = [ 0,
-                                                                            -1*np.abs(np.median(behavior_data['zaber_reward_zone']-behavior_data['zaber_limit_far'])),
-                                                                            0],
+                                            starting_lickport_position  = starting_lickport_position,
                                             behavior_task_name          = behavior_task_name,
                                             hit_rate_trials_0_10        = np.nanmean(hittrials[goodtrials][:10]),
                                             hit_rate_trials_20_40       = np.nanmean(hittrials[goodtrials][20:40]),

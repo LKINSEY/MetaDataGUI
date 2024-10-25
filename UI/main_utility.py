@@ -252,61 +252,175 @@ def plot_behavior(bpod_data,mouse_name,session_date):
     return [fig,fig2]
 
 
-
+def plot_pavlovian(bpod_data,mouse_name,session_date):
+    # Behavior plot for pavlovian conditioning
+    scanimage_file_names = list()
+    basenames = list()
+    file_indices = list()
+    trial_indices = list()
+    for trial_i,sfn in enumerate(bpod_data['scanimage_file_names']):
+        if type(sfn) == type('no movie for this trial'):
+            continue
+        else:
+            for file in sfn:
+                if '_' in file:# and ('cell' in file.lower() or 'stim' in file.lower()):
+                    basenames.append(file[:-1*file[::-1].find('_')-1])
+                    try:
+                        file_indices.append(int(file[-1*file[::-1].find('_'):file.find('.')]))
+                    except:
+                        print('weird file index: {}'.format(file))
+                        file_indices.append(-1)
+                else:
+                    basenames.append(file[:file.find('.')])
+                    file_indices.append(-1)
+                trial_indices.append(trial_i)
+                scanimage_file_names.append(file)
+    
+                
+    scanimage_file_names = np.asarray(scanimage_file_names)
+    basenames =np.asarray(basenames)
+    file_indices =np.asarray(file_indices)
+    trial_indices = np.asarray(trial_indices)
+    
+    unique_basenames = np.unique(basenames)
+    basenames_order = []
+    for basename in unique_basenames:
+        basenames_order.append(np.argmax(np.asarray(basenames)==basename))
+    unique_basenames = unique_basenames[np.argsort(basenames_order)]
+    
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    
+    basenames_plotted = []
+    trial = 0
+    new_session_trial = [0,]
+    for basename in unique_basenames:
+        trials_now = basename==basenames
+        trial_indices_now = trial_indices[trials_now]
+        go_trial = []
+        go_t = []
+        go_omission_trial = []
+        go_omission_t = []
+        reward_trial = []
+        reward_t = []
+        reward_omission_trial = []
+        reward_omission_t = []
+        licks_t = []
+        licks_trial = []
+    
+        for trial_i,trial_idx in enumerate(trial_indices_now):
+            licks = bpod_data['lick_L'][trial_idx]
+            rewards = bpod_data['reward_L'][trial_idx]
+            gocues = bpod_data['go_cue_times'][trial_idx]
+            if len(rewards)>0 and gocues>0:
+                go_reward_diff = rewards[0] - gocues
+            if not gocues>0:
+                go_omission_trial.append(trial)
+                go_omission_t.append(0)
+                gocues = rewards[0]-go_reward_diff
+            else:
+                go_trial.append(trial)
+                go_t.append(0)
+            if len(rewards)>0:
+                reward_t.append(rewards[0]-gocues)
+                reward_trial.append(trial)
+            else:
+                reward_omission_t.append(go_reward_diff)
+                reward_omission_trial.append(trial)
+            if len(licks)>0:
+                licks_t.append(licks-gocues)
+                licks_trial.append(np.ones(len(licks))*trial)
+            trial+=1
+    
+        new_session_trial.append(trial)
+            
+    
+        basenames_plotted.append(basename)
+        ax1.plot(np.concatenate(licks_t),np.concatenate(licks_trial),'k.',markersize = 1)
+        ax1.plot(go_t,go_trial,'g.')
+        ax1.plot(go_omission_t,go_omission_trial,'kx')
+        ax1.plot(reward_t,reward_trial,'r.')
+        ax1.plot(reward_omission_t,reward_omission_trial,'kx')
+    
+    ax1.set_xlim([-3,6])
+    
+    ax1.hlines(new_session_trial,-3,6,colors='b', linestyles='dashed')
+    ax1.set_xlabel('Time from GO cue (s)')
+    ax1.set_ylabel('Trial#')
+    ax1.set_title('{} - {}'.format(mouse_name,session_date))
+    return fig
 
 #Generate JSONS
 
 #Session JSON
-def prepareSessionJSON(behavior_folder_staging, behavior_fname):
+def prepareSessionJSON(behavior_folder_staging, behavior_fname,nobehavior = False):
     #inputs == behavior_folder_staging, behavior_fname, 
     #define an error message
-
-    # create session json from bpod dict, tiff folder and user input
-    behavior_data = np.load(os.path.join(behavior_folder_staging,behavior_fname),allow_pickle = True).tolist()
-    bpod_file_names = np.unique(behavior_data['bpod_file_names'])    
-    command_list = []
-    #likely if but, it will be here...
-    for f in bpod_file_names:
-        shutil.copyfile(f, behavior_folder_staging.joinpath(Path(f).name))
-    goodtrials = []
-    hittrials = []
-    for r,sfn in zip(behavior_data['reward_L'],behavior_data['scanimage_file_names']):
-        if type(sfn) == str:
-            goodtrials.append(False)
-        else:
-            goodtrials.append(True)
-        if len(r)==0:
-            hittrials.append(False)
-        else:
-            hittrials.append(True)
-    goodtrials = np.asarray(goodtrials)    
-    hittrials = np.asarray(hittrials)    
     is_side_camera_active = False
     is_bottom_camera_active = False
-    for movienames in behavior_data['behavior_movie_name_list'][goodtrials]:
-        for moviename in movienames:
-            if 'side' in moviename:
-                is_side_camera_active = True
-            if 'bottom' in moviename:
-                is_bottom_camera_active = True
-            if is_bottom_camera_active and is_side_camera_active:
-                break
-        if is_bottom_camera_active and is_side_camera_active:
-                break
-    cn_num = []
-    for cn_now in behavior_data['scanimage_roi_outputChannelsRoiNames']:
-        cn_num.append(len(cn_now))
-    cn_num = int(np.mean(np.asarray(cn_num)[goodtrials]))
-    if cn_num ==1:
-        behavior_task_name = "single neuron BCI conditioning"
-    elif cn_num ==2:
-        behavior_task_name = "two neuron BCI conditioning"
-    elif cn_num>2:
-        behavior_task_name = "multi-neuron BCI conditioning"
+    if nobehavior:
+        behavior_task_name = 'no behavior'
+        hittrials = np.zeros(100)*np.nan
+        goodtrials = np.asarray([False]*100)
+        starting_lickport_position = [0,0,0]
+        behavior_data = None
     else:
-        return 
-    print(behavior_task_name)
-    return behavior_data, hittrials, goodtrials, behavior_task_name, is_side_camera_active, is_bottom_camera_active
+        # create session json from bpod dict, tiff folder and user input
+        behavior_data = np.load(os.path.join(behavior_folder_staging,behavior_fname),allow_pickle = True).tolist()
+        if 'scanimage_tiff_headers' not in behavior_data.keys():
+            print('no scanimage header found in behavior file - redo behavior extraction (cell above)')
+            return # THIS IS AN ERROR, PLEASE HANDLE - behavior extraction must be done again - probably not the best place here
+        bpod_file_names = np.unique(behavior_data['bpod_file_names'])    
+        command_list = []
+        #likely if but, it will be here...
+        for f in bpod_file_names:
+            shutil.copyfile(f, behavior_folder_staging.joinpath(Path(f).name))
+        goodtrials = []
+        hittrials = []
+        for r,sfn in zip(behavior_data['reward_L'],behavior_data['scanimage_file_names']):
+            if type(sfn) == str:
+                goodtrials.append(False)
+            else:
+                goodtrials.append(True)
+            if len(r)==0:
+                hittrials.append(False)
+            else:
+                hittrials.append(True)
+        goodtrials = np.asarray(goodtrials)    
+        hittrials = np.asarray(hittrials)    
+        
+        for movienames in behavior_data['behavior_movie_name_list'][goodtrials]:
+            for moviename in movienames:
+                if 'side' in moviename:
+                    is_side_camera_active = True
+                if 'bottom' in moviename:
+                    is_bottom_camera_active = True
+                if is_bottom_camera_active and is_side_camera_active:
+                    break
+            if is_bottom_camera_active and is_side_camera_active:
+                    break
+        cn_num = []
+        for cn_now in behavior_data['scanimage_roi_outputChannelsRoiNames']:
+            cn_num.append(len(cn_now))
+        cn_num = int(np.mean(np.asarray(cn_num)[goodtrials]))
+        if cn_num ==1:
+            behavior_task_name = "single neuron BCI conditioning"
+        elif cn_num ==2:
+            behavior_task_name = "two neuron BCI conditioning"
+        elif cn_num>2:
+            behavior_task_name = "multi-neuron BCI conditioning"
+        elif cn_num ==0:
+            behavior_task_name = 'Pavlovian conditioning'
+        else:
+            print('how many CNs??')
+            return # error!!
+        print(behavior_task_name)
+        starting_lickport_position = [ 0,
+                                        -1*np.abs(np.median(behavior_data['zaber_reward_zone']-behavior_data['zaber_limit_far'])),
+                                        0]
+    return behavior_data, hittrials, goodtrials, behavior_task_name, is_side_camera_active, is_bottom_camera_active, starting_lickport_position
+
+
 
 
 def stagingVideos(behavior_data, behavior_video_folder_staging):
