@@ -76,6 +76,7 @@ class BergamoDataViewer(QMainWindow):
         #Define Init Variables
         self.paramDict = {}
         self.miceAvailable = glob('Y:/*') 
+        self.listOfMice = os.listdir('Y:/')
         self.selectedPaths=None
         self.datesToLook= []
         self.datesDropDownActive = False
@@ -316,7 +317,7 @@ class BergamoDataViewer(QMainWindow):
     def tabToSwitch(self, event):
         thisMouse = self.WRName.toPlainText()
         if event.key():
-            if len(thisMouse)>1:
+            if thisMouse in self.listOfMice:
                 with open('Y:/mouseDict.json', 'r') as f:
                     mouseDict = json.load(f)
                 if thisMouse in mouseDict.keys():
