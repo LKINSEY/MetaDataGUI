@@ -35,11 +35,13 @@ dataDir = 'Y:/' #setting to scratch save location
 
 #Creating a seperate class that can help user verify what boxes are valid by just clicking on them
 class userValidatableTextEdit(QTextEdit):
+    tab = pyqtSignal(object)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.default_color = QColor('white')
         self.clicked_color = QColor('lightblue')
         self.isGreen = False
+        
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
             if self.isGreen:
@@ -56,6 +58,12 @@ class userValidatableTextEdit(QTextEdit):
     def setColorToGreen(self):
         self.setStyleSheet('background-color: green')
         self.isGreen=True
+    def keyPressEvent(self,event):
+        if event.key() == 16777217:
+            event.accept()
+            self.tab.emit(event)
+        else:
+            super().keyPressEvent(event)
         
 
 
@@ -67,7 +75,7 @@ class BergamoDataViewer(QMainWindow):
         self.showMaximized()
         #Define Init Variables
         self.paramDict = {}
-        self.miceAvailable = glob('Y:/*') #glob('F:/staging/*') #refreshes every time you start the app
+        self.miceAvailable = glob('Y:/*') 
         self.selectedPaths=None
         self.datesToLook= []
         self.datesDropDownActive = False
@@ -149,6 +157,7 @@ class BergamoDataViewer(QMainWindow):
         #Layer 1
         
         self.WRName = userValidatableTextEdit()                 #Define Edit
+        self.WRName.tab.connect(self.tabToSwitch)               #Define tab event
         self.WRNameLabel = QGroupBox('Mouse WR Name')           #Define Label
         self.WRNameLabel.setFixedHeight(h)                      #Set Height
         self.WRNameLayout = QVBoxLayout()                       #Define Layout
@@ -285,6 +294,17 @@ class BergamoDataViewer(QMainWindow):
         mainLayout.addWidget(self.mouseEntryLabel)
         mainLayout.addWidget(self.plotVisualizationLabel)
         
+        self.textEdits = [
+            #order at which tabs rotate through text edits
+            self.WRName,
+            self.mouseID,
+            self.imageWaveLength,
+            self.imagingDepth,
+            self.experimenterName,
+            self.sessionDate,
+            self.targetStruct,
+            self.notes
+        ]
 
         self.show()
     
@@ -293,6 +313,31 @@ class BergamoDataViewer(QMainWindow):
         #######################################################
         
 
+    def tabToSwitch(self, event):
+        thisMouse = self.WRName.toPlainText()
+        if event.key():
+            if len(thisMouse)>1:
+                with open('Y:/mouseDict.json', 'r') as f:
+                    mouseDict = json.load(f)
+                if thisMouse in mouseDict.keys():
+                    mouseID = mouseDict[thisMouse]
+                    whereMouseIs = [ i for i in range(self.mouseNameDropDown.count()) if self.mouseNameDropDown.itemText(i) == thisMouse]
+                    self.mouseNameDropDown.setCurrentIndex(whereMouseIs[0])
+                    
+                    #updating most recent date
+                    mouseDates = []
+                    for j in range(self.mouseDateDropdown.count()):
+                        try:
+                            mouseDates.append(datetime.strptime(self.mouseDateDropdown.itemText(j), '%m%d%y'))
+                        except Exception:
+                            print('passed over wierd session name')
+                            pass 
+                    sortedDates = [date.strftime('%m%d%y') for date in sorted(mouseDates)]
+                    mostRecentIDX = [dateIDX for dateIDX in range(self.mouseDateDropdown.count()) if self.mouseDateDropdown.itemText(dateIDX) == sortedDates[-1]]
+                    print(mostRecentIDX, 'TESTESTESTESTESTESTEST')
+                    self.mouseDateDropdown.setCurrentIndex(mostRecentIDX[0])
+            else:
+                print('Mouse not specified!')
 
         
     def highlightTextBoxes(self):
@@ -555,10 +600,12 @@ class BergamoDataViewer(QMainWindow):
                     pixmap3 = QPixmap.fromImage(image3)
                     self.pdfLoc.setPixmap(pixmap3)
               except Exception as e:
-                  err = QErrorMessage(self)
-                  traceback.print_exc() 
-                  err.showMessage('Refusing to load PDF because PDF does not have all of the necessary pages...')
-                  err.exec()
+                  pass
+                  #if it doesn't load, just pass.... don't bother the user we already know
+                #   err = QErrorMessage(self)
+                #   traceback.print_exc() 
+                #   err.showMessage('Refusing to load PDF because PDF does not have all of the necessary pages...')
+                #   err.exec()
 
 
 
