@@ -50,6 +50,17 @@ git clone https://github.com/LKINSEY/MetaDataGUI.git
 cd metaDataGUI\UI
 python metaDataGUI_updateInProgress.py
 ```
+running python in miniconda or bash can help verify that it is working.
+However, a shortcut to a batch file is now included. Move this shortcut 
+to the user's desktop, and double click the shortcut -- should open
+the gui with just a button click after a few seconds of loading
+everything.
+
+1.) run the bat file first, this sets the bat file's working directory.
+2.) copy the shortcut to desktop
+3.) double click on desktop shortcut
+4.) GUI should open
+
 
 ##AIND USAGE ONLY
 map: \\allen\aind\scratch\BCI\2p-raw to Y: drive
