@@ -328,7 +328,7 @@ class BergamoDataViewer(QMainWindow):
                             mouseDates.append(datetime.strptime(self.mouseDateDropdown.itemText(j), '%m%d%y'))
                         except Exception:
                             pass 
-                    sortedDates = [date.strftime('%m%d%y') for date in sorted(mouseDate)]
+                    sortedDates = [date.strftime('%m%d%y') for date in sorted(mouseDates)]
                     for date in sortedDates:
                         if os.path.exits(f'Y:/{thisMouse}/{date}/session.json'):
                             mostRecentDate = date
