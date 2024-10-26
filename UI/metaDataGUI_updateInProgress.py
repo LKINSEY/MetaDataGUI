@@ -320,21 +320,19 @@ class BergamoDataViewer(QMainWindow):
                 with open('Y:/mouseDict.json', 'r') as f:
                     mouseDict = json.load(f)
                 if thisMouse in mouseDict.keys():
-                    mouseID = mouseDict[thisMouse]
                     whereMouseIs = [ i for i in range(self.mouseNameDropDown.count()) if self.mouseNameDropDown.itemText(i) == thisMouse]
                     self.mouseNameDropDown.setCurrentIndex(whereMouseIs[0])
-                    
-                    #updating most recent date
                     mouseDates = []
                     for j in range(self.mouseDateDropdown.count()):
                         try:
                             mouseDates.append(datetime.strptime(self.mouseDateDropdown.itemText(j), '%m%d%y'))
                         except Exception:
-                            print('passed over wierd session name')
                             pass 
-                    sortedDates = [date.strftime('%m%d%y') for date in sorted(mouseDates)]
-                    mostRecentIDX = [dateIDX for dateIDX in range(self.mouseDateDropdown.count()) if self.mouseDateDropdown.itemText(dateIDX) == sortedDates[-1]]
-                    print(mostRecentIDX, 'TESTESTESTESTESTESTEST')
+                    sortedDates = [date.strftime('%m%d%y') for date in sorted(mouseDate)]
+                    for date in sortedDates:
+                        if os.path.exits(f'Y:/{thisMouse}/{date}/session.json'):
+                            mostRecentDate = date
+                    mostRecentIDX = [dateIDX for dateIDX in range(self.mouseDateDropdown.count()) if self.mouseDateDropdown.itemText(dateIDX) == mostRecentDate]
                     self.mouseDateDropdown.setCurrentIndex(mostRecentIDX[0])
             else:
                 print('Mouse not specified!')
@@ -601,11 +599,7 @@ class BergamoDataViewer(QMainWindow):
                     self.pdfLoc.setPixmap(pixmap3)
               except Exception as e:
                   pass
-                  #if it doesn't load, just pass.... don't bother the user we already know
-                #   err = QErrorMessage(self)
-                #   traceback.print_exc() 
-                #   err.showMessage('Refusing to load PDF because PDF does not have all of the necessary pages...')
-                #   err.exec()
+
 
 
 
