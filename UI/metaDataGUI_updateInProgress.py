@@ -454,8 +454,8 @@ class BergamoDataViewer(QMainWindow):
         mouse, date = messageTuple
         index = self.mouseDateDropdown.findText(date)
         if index != -1:
-            self.statusLust.addItem('Showing PDFs')
-            self.combo_box.setCurrentIndex(index)
+            self.statusList.addItem('Showing PDFs')
+            self.mouseDateDropdown.setCurrentIndex(index)
     
     #Back to app functions
 
