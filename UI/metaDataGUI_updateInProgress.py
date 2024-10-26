@@ -330,7 +330,7 @@ class BergamoDataViewer(QMainWindow):
                             pass 
                     sortedDates = [date.strftime('%m%d%y') for date in sorted(mouseDates)]
                     for date in sortedDates:
-                        if os.path.exits(f'Y:/{thisMouse}/{date}/session.json'):
+                        if os.path.exists(f'Y:/{thisMouse}/{date}/session.json'):
                             mostRecentDate = date
                     mostRecentIDX = [dateIDX for dateIDX in range(self.mouseDateDropdown.count()) if self.mouseDateDropdown.itemText(dateIDX) == mostRecentDate]
                     self.mouseDateDropdown.setCurrentIndex(mostRecentIDX[0])
