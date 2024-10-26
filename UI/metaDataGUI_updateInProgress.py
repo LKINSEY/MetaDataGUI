@@ -455,7 +455,7 @@ class BergamoDataViewer(QMainWindow):
         mouse, date = messageTuple
         index = self.mouseDateDropdown.findText(date)
         if index != -1:
-            self.statusList.addItem('Showing PDFs')
+            self.statusList.addItem(f'Showing PDFs for {mouse}')
             self.mouseDateDropdown.setCurrentIndex(index)
     
     #Back to app functions
@@ -524,8 +524,16 @@ class BergamoDataViewer(QMainWindow):
         self.datesDropDownActive = True
         self.selectedMouse = self.mouseNameDropDown.currentText()
         self.WRName.setPlainText(self.selectedMouse)
-        self.selectedPaths = glob(f'Y:/{self.selectedMouse}/*2*') #f'F:/Staging/{self.selectedMouse}*') #change this to scratch
-        self.datesToLook = [(file.split('\\')[-1]).split('_')[-1] for file in self.selectedPaths]
+        # self.selectedPaths = glob(f'Y:/{self.selectedMouse}/*2*')
+        self.selectedPaths = []
+        for date in os.listdir(f'Y:/{self.selectedMouse}/'):
+            try: 
+                self.selectedPaths.append(  datetime.strptime(date, '%m%d%y')) #put dates in datetime format
+            except Exception:
+                #ignore improperly logged data
+                pass
+        self.datesToLook = [date.strftime('%m%d%y') for date in sorted(self.selectedPaths, reverse=True)] #sort dates and only return valid dates in order 
+        # self.datesToLook = [(file.split('\\')[-1]).split('_')[-1] for file in self.selectedPaths]
         self.updateDatesDropdown()
         self.WRName.setPlainText(self.selectedMouse)
     
