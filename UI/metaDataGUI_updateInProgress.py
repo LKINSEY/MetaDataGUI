@@ -118,10 +118,12 @@ class BergamoDataViewer(QMainWindow):
         for file in self.miceAvailable:
             if os.path.isdir(file):
                 mouseWRname = file.split('/')[-1]
-                if 'B' in mouseWRname or 'C' in mouseWRname or 'p' in mouseWRname: #mouseWRname.count('_')>=1:
-                    mice.append(mouseWRname)#mouseWRname.split('_')[0])
-                    # print(mouseWRname, mouseWRname.count('_'), mouseWRname.split('_')[0])
+                if mouseWRname.count('_')>1:
+                    mice.append('_'.join(mouseWRname.split('_')[:-1]))
+                else:
+                    mice.append(mouseWRname.split('_')[0])
         uniqueMice = np.unique(mice)
+        print(uniqueMice)
         for mouse in uniqueMice:
             self.mouseNameDropDown.addItem(f'{mouse}')
         self.mouseNameDropDown.setCurrentIndex(0)
@@ -501,11 +503,13 @@ class BergamoDataViewer(QMainWindow):
             err.exec()
     
     def updateMouseSelectionDropdown(self):
-        self.miceAvailable = glob( 'Y:/*2*')#self.paramDict['stagingDir'] +'/*')
+        self.miceAvailable = glob( 'Y:/*')#self.paramDict['stagingDir'] +'/*')
+        print(self.miceAvailable)
         mice = []
         for file in self.miceAvailable:
             if os.path.isdir(file):
                 mouseWRname = file.split('\\')[-1]
+                print(mouseWRname)
                 if mouseWRname.count('_')>1:
                     mice.append('_'.join(mouseWRname.split('_')[:-1]))
                 else:
