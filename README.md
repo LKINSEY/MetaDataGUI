@@ -13,7 +13,19 @@ Data is saved on VAST as follows: <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;      --/pophys <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;      --/rig.json <br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;      --/session.json <br>
-
+```
+/allen/aind/scratch/BCI/2p-raw/
+                              |- mouseWRname/
+                                            |- behavior/
+                                                        |- raw & exported behavior info
+                                            |- behaviorvideo/
+                                                        |-side/
+                                                        |-bottom/ 
+                                            |- pophys
+                                                        |- raw tiffs and other imaging files
+                                            |- rig.json 
+                                            |- session.json
+```
 # Installation
 Go through all the steps.
 
