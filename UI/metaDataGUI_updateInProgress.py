@@ -508,7 +508,7 @@ class BergamoDataViewer(QMainWindow):
         mice = []
         for file in self.miceAvailable:
             if os.path.isdir(file):
-                mouseWRname = file.split('\\')[-1]
+                mouseWRname = file.split('/')[-1]
                 print(mouseWRname)
                 if mouseWRname.count('_')>1:
                     mice.append('_'.join(mouseWRname.split('_')[:-1]))
