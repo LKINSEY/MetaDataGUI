@@ -13,7 +13,9 @@ save_dir = Path(args[2])
 
 
 
-raw_behavior_dirs = [Path('//10.128.54.244/Documents/Pybpod/BCI')]
+raw_behavior_dirs = [Path('//10.128.54.244/Documents/Pybpod/BCI'),
+                    Path('//10.128.54.244/Documents/Pybpod/BCI_obsolete'),
+                    Path('//10.128.54.244/Documents/Pybpod/BCI_obsolete_2')]
 zaber_root_folder = Path('//10.128.54.244/Documents/BCI_Zaber_data')
 print('Raw data is here!! -->', calcium_imaging_raw_session_dir, 'so chill...')
 BCI_analysis.pipeline_bpod.export_single_pybpod_session(session =Path(str(calcium_imaging_raw_session_dir)[:-6]).name,
