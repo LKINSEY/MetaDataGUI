@@ -9,6 +9,27 @@ from aind_metadata_mapper.bergamo.session import ( BergamoEtl,
                                                   RawImageInfo,
                                                   )
 import bergamo_rig
+from aind_data_schema_models.data_name_patterns import DataLevel
+from typing import Optional
+from aind_codeocean_pipeline_monitor.models import (
+    PipelineMonitorSettings,
+    CaptureSettings,
+)
+from aind_data_transfer_models.core import (
+    ModalityConfigs,
+    BasicUploadJobConfigs,
+    SubmitJobRequest,
+    CodeOceanPipelineMonitorConfigs,
+)
+from aind_metadata_mapper.models import (
+    SessionSettings,
+    JobSettings as GatherMetadataJobSettings,
+)
+from aind_metadata_mapper.bergamo.models import JobSettings as BergamoSessionSettings
+from aind_data_schema_models.modalities import Modality
+from aind_data_schema_models.platforms import Platform
+from codeocean.computation import RunParams, DataAssetsRunParam
+from codeocean.data_asset import DataAssetParams
 
 #from REST API documentation
 # to access these on local device run this command:
@@ -141,7 +162,6 @@ class metaDataWorker(QRunnable):
         try:
             self.signals.nextStep.emit('Generating Session JSON')
             scratchInput = Path(self.params.get('pathToRawData') + f'/{WRname}/{dateFileFormat}/pophys')
-            print(scratchInput, 'TEST TEST TEST TEST TEST TEST TEST TEST')
             behavior_data, hittrials, goodtrials, behavior_task_name, is_side_camera_active, is_bottom_camera_active,starting_lickport_position = prepareSessionJSON(behavior_folder_staging, behavior_fname)
             user_settings = JobSettings(    input_source                = Path(scratchInput), #date folder local i.e. Y:/BCI93/101724/pophys
                                             output_directory            = Path(stagingMouseSessionPath), #staging dir folder scratch  i.e. Y:/BCI93/101724
@@ -198,7 +218,6 @@ class metaDataWorker(QRunnable):
 
 
 
-
 class transferToScratchWorker(QRunnable):
     def __init__(self, signals, pathDict):
         super().__init__()
@@ -234,7 +253,6 @@ class transferToScratchWorker(QRunnable):
         
 
 #currently this is just for uploading 1 job to cloud
-#this is a worker so that life is easier for ui and so that status updates get thrown back as signals
 class cloudTransferWorker(QRunnable):
     def __init__(self, signals, params):
         super().__init__()
@@ -244,142 +262,57 @@ class cloudTransferWorker(QRunnable):
         self.signals.nextStep.emit('Sending Data To The Cloud')
         thisMouse = self.params.get('WRname')
         dateEnteredAs = self.params.get('date')
-
-
-        print(dateEnteredAs)
-
+        subject_id = self.params['subjectID']
         # For testing purposes, use dev url
-        service_url = "http://aind-data-transfer-service/api/v1/submit_jobs"
-        
-        user_email = "test@alleninstitute.org"
-        email_notification_types = ["fail"]
-        behavior_source          = str(PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior"))
-        behavior_videos_source   = str(PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior_video"))
-        pophys_source            = str(PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/pophys"))
-      
-        # Folder where rig.json and session.json are located
-        metadata_dir             = str(PurePosixPath(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}"))
-        
-        subject_id = str(self.params['subjectID'])
-        acq_datetime = datetime.strptime(self.params['sessionStart'],'%Y-%m-%dT%H:%M:%S.%f%z')
-        acq_datetime_str = acq_datetime.strftime('%Y-%m-%d %H:%M:%S')#'%YYYY-%MM-%DD %HH:%mm:%ss')
-        s3_prefix = (
-            f"single-plane-ophys_{subject_id}_"
-            f"{acq_datetime.strftime('%Y-%m-%d_%H-%M-%S')}"
-        )
-        print('This is the S3 prefix', s3_prefix)
-        # This will be filled in with the data above. No need to modify.
-        contents = {
-              "job_type": "transform_and_upload",
-              "user_email": user_email,
-              "email_notification_types": email_notification_types,
-              "upload_jobs": [
-                  {
-                      "user_email": user_email,
-                      "email_notification_types": email_notification_types,
-                      "project_name": "Brain Computer Interface",
-                      "s3_bucket": "private",
-                      "platform": {
-                          "name": "Single-plane optical physiology platform",
-                          "abbreviation": "single-plane-ophys",
-                      },
-                      "modalities": [
-                          {
-                              "modality": {
-                                  "name": "Behavior",
-                                  "abbreviation": "behavior",
-                              },
-                              "source": behavior_source,
-                              "compress_raw_data": False,
-                          },
-                          {
-                              "modality": {
-                                  "name": "Behavior videos",
-                                  "abbreviation": "behavior-videos",
-                              },
-                              "source": behavior_videos_source,
-                              "compress_raw_data": False,
-                          },
-                          {
-                              "modality": {
-                                  "name": "Planar optical physiology",
-                                  "abbreviation": "pophys",
-                              },
-                              "source": pophys_source,
-                              "compress_raw_data": False,
-                          },
-                      ],
-                      "subject_id": subject_id,
-                      "acq_datetime": acq_datetime_str,
-                      "metadata_dir": metadata_dir,
-                      "metadata_dir_force": False,
-                      "force_cloud_sync": False,
-                      "metadata_configs": {
-                          "job_settings_name": "GatherMetadata",
-                          "subject_settings": {
-                              "subject_id": subject_id,
-                              "metadata_service_path": "subject",
-                          },
-                          "raw_data_description_settings": {
-                              "name": s3_prefix,
-                              "project_name": "Brain Computer Interface",
-                              "modality": [
-                                  {"name": "Behavior", "abbreviation": "behavior"},
-                                  {
-                                      "name": "Behavior videos",
-                                      "abbreviation": "behavior-videos",
-                                  },
-                                  {
-                                      "name": "Planar optical physiology",
-                                      "abbreviation": "pophys",
-                                  },
-                              ],
-                              "institution": {
-                                  "name": "Allen Institute for Neural Dynamics",
-                                  "abbreviation": "AIND",
-                                  "registry": {
-                                      "name": "Research Organization Registry",
-                                      "abbreviation": "ROR",
-                                  },
-                                  "registry_identifier": "04szwah67",
-                              },
-                              "metadata_service_path": "funding",
-                          },
-                          "procedures_settings": {
-                              "subject_id": subject_id,
-                              "metadata_service_path": "procedures",
-                          },
-                          "directory_to_write_to": "stage",
-                          "metadata_dir": metadata_dir,
-                          "metadata_dir_force": False,
-                      },
-                      "trigger_capsule_configs": {
-                          "job_type": "register_data",
-                          "bucket": "private",
-                          "prefix": s3_prefix,
-                          "asset_name": s3_prefix,
-                          "mount": s3_prefix,
-                          "results_suffix": "processed",
-                          "modalities": [
-                              {"name": "Behavior", "abbreviation": "behavior"},
-                              {
-                                  "name": "Behavior videos",
-                                  "abbreviation": "behavior-videos",
-                              },
-                              {
-                                  "name": "Planar optical physiology",
-                                  "abbreviation": "pophys",
-                              },
-                          ],
-                      },
-                  }
-              ],
-          }
-        
-        response = requests.post(service_url, json=contents)
-        response.raise_for_status()
-        
+        service_url = "http://aind-data-transfer-service-dev/api/v1/submit_jobs"
+        project_name = "Brain Computer Interface"
+        s3_bucket = "private"
+        platform = Platform.SINGLE_PLANE_OPHYS
+        acq_datetime = datetime.fromisoformat("2024-10-23T15:30:39")#find correct way to state the acq_datetime
+        codeocean_pipeline_id = "a2c94161-7183-46ea-8b70-79b82bb77dc0"
+        codeocean_pipeline_mount: Optional[str] = "ophys"
 
+        codeocean_configs = CodeOceanPipelineMonitorConfigs(
+            pipeline_monitor_capsule_settings=[
+                PipelineMonitorSettings(
+                    run_params=RunParams(
+                        pipeline_id=codeocean_pipeline_id,
+                        data_assets=[DataAssetsRunParam(id="", mount=codeocean_pipeline_mount)],
+                    ),
+                    capture_settings=CaptureSettings(),
+                )
+            ],
+        )
+        #adding codeocean capsule ID and mount
+        pophys_config = ModalityConfigs(
+            modality=Modality.POPHYS,
+            source=(f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/pophys"),
+        )
+        behavior_video_config = ModalityConfigs(
+            modality=Modality.BEHAVIOR_VIDEOS,
+            compress_raw_data=False,
+            source=(f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior_video"),
+        )
+        behavior_config = ModalityConfigs(
+            modality=Modality.BEHAVIOR,
+            source=(f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior"),
+        )
+        upload_job_configs = BasicUploadJobConfigs(
+            project_name=project_name,
+            s3_bucket=s3_bucket,
+            platform=platform,
+            subject_id=subject_id,
+            acq_datetime=acq_datetime,
+            modalities=[pophys_config, behavior_config, behavior_video_config],
+            codeocean_configs=codeocean_configs,
+        )
+        upload_jobs = [upload_job_configs]
+        submit_request = SubmitJobRequest(upload_jobs=upload_jobs)
+        post_request_content = json.loads(submit_request.model_dump_json(exclude_none=True))
+        #Submit request
+        submit_job_response = requests.post(url=service_url, json=post_request_content)
+        print(submit_job_response.status_code)
+        print(submit_job_response.json())
         self.signals.nextStep.emit('Data Sent!')
         
 
