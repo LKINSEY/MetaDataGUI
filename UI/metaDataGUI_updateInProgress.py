@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import  QMenuBar, QLineEdit, QHBoxLayout, QLabel, QErrorMes
 import pandas as pd
 from datetime import datetime, date
 import matplotlib.pyplot as plt
+
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import fitz #PyMuPDF
 #comment out for testing
