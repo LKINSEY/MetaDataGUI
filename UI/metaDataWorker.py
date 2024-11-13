@@ -9,7 +9,6 @@ from aind_metadata_mapper.bergamo.session import ( BergamoEtl,
                                                   RawImageInfo,
                                                   )
 import bergamo_rig
-from aind_data_schema_models.data_name_patterns import DataLevel
 from typing import Optional
 from aind_codeocean_pipeline_monitor.models import (
     PipelineMonitorSettings,
@@ -21,15 +20,10 @@ from aind_data_transfer_models.core import (
     SubmitJobRequest,
     CodeOceanPipelineMonitorConfigs,
 )
-from aind_metadata_mapper.models import (
-    SessionSettings,
-    JobSettings as GatherMetadataJobSettings,
-)
-from aind_metadata_mapper.bergamo.models import JobSettings as BergamoSessionSettings
 from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
 from codeocean.computation import RunParams, DataAssetsRunParam
-from codeocean.data_asset import DataAssetParams
+
 
 #from REST API documentation
 # to access these on local device run this command:
@@ -263,26 +257,14 @@ class cloudTransferWorker(QRunnable):
         thisMouse = self.params.get('WRname')
         dateEnteredAs = self.params.get('date')
         subject_id = self.params['subjectID']
-        # For testing purposes, use dev url
-        service_url = "http://aind-data-transfer-service-dev/api/v1/submit_jobs"
+        service_url = "http://aind-data-transfer-service/api/v1/submit_jobs" # For testing purposes, use dev url
         project_name = "Brain Computer Interface"
         s3_bucket = "private"
         platform = Platform.SINGLE_PLANE_OPHYS
-        acq_datetime = datetime.fromisoformat("2024-10-23T15:30:39")#find correct way to state the acq_datetime
+        acquisition_datetime = datetime.fromisoformat("2024-10-23T15:30:39")#find correct way to state the acq_datetime
         codeocean_pipeline_id = "a2c94161-7183-46ea-8b70-79b82bb77dc0"
         codeocean_pipeline_mount: Optional[str] = "ophys"
 
-        codeocean_configs = CodeOceanPipelineMonitorConfigs(
-            pipeline_monitor_capsule_settings=[
-                PipelineMonitorSettings(
-                    run_params=RunParams(
-                        pipeline_id=codeocean_pipeline_id,
-                        data_assets=[DataAssetsRunParam(id="", mount=codeocean_pipeline_mount)],
-                    ),
-                    capture_settings=CaptureSettings(),
-                )
-            ],
-        )
         #adding codeocean capsule ID and mount
         pophys_config = ModalityConfigs(
             modality=Modality.POPHYS,
@@ -297,15 +279,20 @@ class cloudTransferWorker(QRunnable):
             modality=Modality.BEHAVIOR,
             source=(f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior"),
         )
+        
         upload_job_configs = BasicUploadJobConfigs(
-            project_name=project_name,
             s3_bucket=s3_bucket,
             platform=platform,
             subject_id=subject_id,
-            acq_datetime=acq_datetime,
+            acq_datetime=acquisition_datetime.strftime("%Y-%m-%d %H:%M:%S"),
             modalities=[pophys_config, behavior_config, behavior_video_config],
-            codeocean_configs=codeocean_configs,
+            metadata_dir=PurePosixPath(f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}"),
+            process_capsule_id=codeocean_pipeline_id,
+            project_name=project_name,
+            input_data_mount=codeocean_pipeline_mount,
+            force_cloud_sync=False,
         )
+
         upload_jobs = [upload_job_configs]
         submit_request = SubmitJobRequest(upload_jobs=upload_jobs)
         post_request_content = json.loads(submit_request.model_dump_json(exclude_none=True))
