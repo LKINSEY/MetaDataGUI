@@ -1,36 +1,44 @@
 # from main_utility import *
 #%%
-from PyQt6.QtGui import QPixmap
 import numpy as np
-import sys, zmq, os, subprocess, queue, json, shutil, traceback
+import sys, os, json, traceback
 from glob import glob
 from pathlib import Path
 from datetime import datetime, date
-from PyQt6.QtWidgets import  QScrollArea, QListWidget, QMenuBar, QTabWidget, QCheckBox, QPushButton, QComboBox, QLineEdit, QHBoxLayout, QLabel, QErrorMessage, QApplication, QMenuBar, QMenu, QMainWindow, QTextEdit, QPushButton, QVBoxLayout, QWidget, QGroupBox, QInputDialog, QFileDialog
-from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QThreadPool
-from PyQt6.QtGui import QIntValidator, QAction, QImage, QPixmap, QColor, QPalette
-from PyQt6.QtWidgets import  QMenuBar, QLineEdit, QHBoxLayout, QLabel, QErrorMessage, QApplication, QMenuBar, QMenu, QMainWindow, QTextEdit, QPushButton, QVBoxLayout, QWidget, QGroupBox, QInputDialog, QFileDialog
-import pandas as pd
+from PyQt6.QtWidgets import (
+    QListWidget, 
+    QCheckBox, 
+    QPushButton, 
+    QComboBox,  
+    QHBoxLayout, 
+    QLabel, 
+    QErrorMessage, 
+    QApplication, 
+    QMainWindow, 
+    QTextEdit, 
+    QVBoxLayout, 
+    QWidget, 
+    QGroupBox
+)
+from PyQt6.QtCore import (
+    Qt, 
+    pyqtSignal, 
+    QThreadPool
+)
+from PyQt6.QtGui import (
+    QImage, 
+    QPixmap, 
+    QColor
+)
 from datetime import datetime, date
-import matplotlib.pyplot as plt
-
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import fitz #PyMuPDF
-#comment out for testing
-from aind_metadata_mapper.bergamo.session import ( BergamoEtl, 
-                                                  JobSettings,
-                                                  RawImageInfo,
-                                                  )
-import bergamo_rig
 from main_utility import *
 from metaDataWorker import WorkerSignals, metaDataWorker, transferToScratchWorker, cloudTransferWorker
 
 today = str(date.today())
 print('Running Data Viewer on:', today)
 dataDir = 'Y:/' #setting to scratch save location
-# dataDir = 'F:/Staging'
-# dataDir = 'F:/BCI
-# dataDir = 'Z:/ophys/Lucas/BCI_upload_GUI/exampleData'
+
 
 
 
