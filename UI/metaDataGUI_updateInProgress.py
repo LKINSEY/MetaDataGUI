@@ -39,9 +39,6 @@ today = str(date.today())
 print('Running Data Viewer on:', today)
 dataDir = 'Y:/' #setting to scratch save location
 
-
-
-
 #Creating a seperate class that can help user verify what boxes are valid by just clicking on them
 class userValidatableTextEdit(QTextEdit):
     tab = pyqtSignal(object)
@@ -109,8 +106,6 @@ class BergamoDataViewer(QMainWindow):
         mainLayout = QVBoxLayout()
         centralWidget.setLayout(mainLayout)
         
-
-        
         #######################################################
         ############## App Heading Stuff ######################
         #######################################################
@@ -138,8 +133,6 @@ class BergamoDataViewer(QMainWindow):
         self.mouseNameDropDown.setCurrentIndex(0)
         self.mouseNameDropDown.currentIndexChanged.connect(self.selectionChanged)
         
-        self.newMouseCheck = QCheckBox('Check this if entering info for new mouse')
-        self.newMouseCheck.stateChanged.connect(self.highlightTextBoxes)
         
 
         #######################################################
@@ -349,32 +342,7 @@ class BergamoDataViewer(QMainWindow):
             else:
                 print('Mouse not specified!')
 
-        
-    def highlightTextBoxes(self):
-        #we want to make all of the text boxes green until a user clicks in them, puts text there, then clicks out
-        #this function will also activate when a new mouse is selected from drop down so that a user
-        #verifies that each item in each text box is correct
-        isCheckedFlag = self.newMouseCheck.isChecked()
-        if isCheckedFlag:
-            self.WRName.setColorToGreen()               #setStyleSheet(f'background-color: {textEditColor.name()}')
-            self.mouseID.setColorToGreen()              #setStyleSheet(f'background-color: {textEditColor.name()}')
-            self.imageWaveLength.setColorToGreen()
-            self.imagingDepth.setColorToGreen()
-            self.experimenterName.setColorToGreen()
-            self.sessionDate.setColorToGreen()
-            self.scratchLoc.setColorToGreen()
-            self.targetStruct.setColorToGreen()
-            self.notes.setColorToGreen()
-        else:
-            self.WRName.setDefaultColor()
-            self.mouseID.setDefaultColor()
-            self.imageWaveLength.setDefaultColor()
-            self.imagingDepth.setDefaultColor()
-            self.experimenterName.setDefaultColor()
-            self.sessionDate.setDefaultColor()
-            self.scratchLoc.setDefaultColor()
-            self.targetStruct.setDefaultColor()
-            self.notes.setDefaultColor()
+
     
     def resetTextEditColor(self, event):
         widget = self.sender()
