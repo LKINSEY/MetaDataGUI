@@ -77,13 +77,42 @@ class processingMouseWindow(QWidget):
         self.setWindowTitle("Secondary Window")
         self.setGeometry(100, 100, 300, 200)
         self.threadingPool = threadingPool
-
+        self.params = localWorkerParams
+        closeWindow = pyqtSignal(object)
         '''
         TODO:
         Design Layout to show mouse wr name at tope
         2 gifs representing data transfer and mouse data processing
         button at the bottom that becomes active if processing is done or if error occurs
         '''
+        self.layout = QVBoxLayout()
+        self.mouseWorking = QLabel(f'Processing {str(self.params['WRname'])}')
+        self.layout.addWidget(self.mouseWorking)
+        
+        #put gifs here
+        self.gifLayout = QHBoxLayout()
+        #self.gifLayout.addWidget(self.fileTransferGif)
+        #self.gifLayout.addWidget(self.processBehaviorGif)
+        self.layout.addLayout(self.gifLayout)
+        
+        
+        self.setLayout(self.layout)
+
+        self.transferAndProcess()
+    def transferAndProcess(self):
+        #set up signals
+        signals = WorkerSignals()
+        signals.nextStep.connect(self.onNextStep)
+        signals.stepComplete.connect(self.onStepComplete)
+        signals.allComplete.connect(self.onFullCompletion)
+        signals.transmitData.connect(self.onDataTransmission)
+        signals.error.connect(self.onError)
+        self.threadingPool.start(transferToScratchWorker(signals, self.paramDict))
+
+
+    def closeEvent(self,event):
+        self.closeWindow.emit(self)
+        super().closeEvent(event)
 
 
 class BergamoDataViewer(QMainWindow):
@@ -103,6 +132,7 @@ class BergamoDataViewer(QMainWindow):
         self.dataPathEntry = None
         self.localDataStorage = None
         self.threadingPool = QThreadPool.globalInstance()
+        self.runningWorkers = []
         self.initUI()
 
     def initUI(self):
@@ -149,9 +179,20 @@ class BergamoDataViewer(QMainWindow):
         #######################################################
         
         #If Entering a new mouse, just enter ID here first 
-        self.mouseEntryLabel = QGroupBox('Mouse Info')
-        self.mouseEntryLabel.setFixedHeight(450)
+        self.mouseEntryLabel = QGroupBox('Mouse Info') #goes left top
+        self.mouseEntryLabel.setFixedSize(800,350)
+
+        self.processingStatusListLabel = QGroupBox('Processing Mice') #goes right top
+        self.processingStatusListLabel.setFixedSize(200,350)
         
+        self.processingLayout = QVBoxLayout()
+        self.processingStatusList = QListWidget(self)
+        self.processingLayout.addWidget(self.processingStatusList) # going inside processingStatusListLabel
+        self.processingStatusListLabel.setLayout(self.processingLayout)
+
+        #mouse entry AND processing status both fit inside mouseEntry label
+        self.mouseEntryLayout = QHBoxLayout()
+
         self.mainMouseEntryLayout = QVBoxLayout()
         self.mouseEntryLayout_layer1 = QHBoxLayout()
         self.mouseEntryLayout_layer2 = QHBoxLayout()
@@ -161,13 +202,12 @@ class BergamoDataViewer(QMainWindow):
         self.mainMouseEntryLayout.addLayout(self.mouseEntryLayout_layer2)
         self.mainMouseEntryLayout.addLayout(self.mouseEntryLayout_layer3)
         self.mainMouseEntryLayout.addLayout(self.mouseEntryLayout_layer4)
+        self.mouseEntryLabel.setLayout(self.mainMouseEntryLayout) #setting label box to be v
 
-        #For Status Updates
-        self.statusList = QListWidget(self)
-        self.mainMouseEntryLayout.addWidget(self.statusList)        #will export these to a new window
+        # Left label is entry area, right label is list
+        self.mouseEntryLayout.addWidget(self.mouseEntryLabel) 
+        self.mouseEntryLayout.addWidget(self.processingStatusListLabel)        
 
-        self.mouseEntryLabel.setLayout(self.mainMouseEntryLayout)
-        
         #Layer 1
         self.WRName = userValidatableTextEdit()                 #Define Edit
         self.WRName.tab.connect(self.tabToSwitch)               #Define tab event
@@ -240,15 +280,15 @@ class BergamoDataViewer(QMainWindow):
 
         # TODO: COMBINE BUTTONS
         #putting a "transfer local data to scratch" button here
-        self.transferDataToScratchButton = QPushButton('Transfer Data To Scratch')
-        self.mainMouseEntryLayout.addWidget(self.transferDataToScratchButton)
-        self.transferDataToScratchButton.clicked.connect(self.processMouse)#(self.copyToScratch)
+        self.processMouseButton = QPushButton('Process Mouse')
+        self.mainMouseEntryLayout.addWidget(self.processMouseButton)
+        self.processMouseButton.clicked.connect(self.processMouse)#(self.copyToScratch)
         
         
         #Process Data Button goes after data is entered
-        self.processDataButton = QPushButton('Process Data')
-        self.mainMouseEntryLayout.addWidget(self.processDataButton)
-        self.processDataButton.clicked.connect(self.initiatePipeline)
+        # self.processDataButton = QPushButton('Process Data')
+        # self.mainMouseEntryLayout.addWidget(self.processDataButton)
+        # # self.processDataButton.clicked.connect(self.initiatePipeline)
         
         #######################################################
         ##############  Display Plots #########################
@@ -283,8 +323,8 @@ class BergamoDataViewer(QMainWindow):
         self.plotVisualizationLabel.setLayout(self.plotVisualizationLayout)
         self.plotVisualizationLayout.addWidget(self.mouseDateDropdown) #date selection layer
         self.plotVisualizationLayout.addLayout(self.pageSelectionUI)   #page selection layer
-        self.plotVisualizationLayout.addWidget(self.pdfLoc)
         self.plotVisualizationLayout.addWidget(self.sendToCloudButton)
+        self.plotVisualizationLayout.addWidget(self.pdfLoc)
 
 
         #######################################################
@@ -295,21 +335,8 @@ class BergamoDataViewer(QMainWindow):
         #Main Layout --> QVBoxLayout
         mainLayout.addWidget(exit_button)
         mainLayout.addWidget(self.mouseNameDropDown)
-        mainLayout.addWidget(self.newMouseCheck)
-        mainLayout.addWidget(self.mouseEntryLabel)
+        mainLayout.addLayout(self.mouseEntryLayout)
         mainLayout.addWidget(self.plotVisualizationLabel)
-        
-        # self.textEdits = [
-        #     #order at which tabs rotate through text edits
-        #     self.WRName,
-        #     self.mouseID,
-        #     self.imageWaveLength,
-        #     self.imagingDepth,
-        #     self.experimenterName,
-        #     self.sessionDate,
-        #     self.targetStruct,
-        #     self.notes
-        # ]
 
         self.show()
     
@@ -360,8 +387,11 @@ class BergamoDataViewer(QMainWindow):
             err.showMessage('This is a new mouse! Enter ID and Process First Data')
             err.exec()
     
-    def processMouseFunction(self):
-        # TODO: also pass boolean array the tells what specific processing you want done (based off check boxes)
+    def processMouse(self):
+        # TODO: 
+        #   -   also pass boolean array the tells what specific processing you want done (based off check boxes)
+        #   -   ADD ALL OPEN WINDOWS TO A QLIST
+        processingArray = [1, 1, 1]                                                             #temporarily will process everything until checkboxes are added.... [behavior, behavior_videos, pophys]
         try:
             self.paramDict['subjectID']         = int(self.mouseID.toPlainText())
             self.paramDict['WRname']            = self.WRName.toPlainText()  
@@ -373,14 +403,40 @@ class BergamoDataViewer(QMainWindow):
             self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
             self.paramDict['pathToRawData']     = dataDir #'Y:/'
             self.paramDict['localPath']         = 'F:/BCI/'
-            self.processingWindow = processingMouseWindow(self.threadingPool, self.paramDict) #pass the threading pool and current parameters to worker window
-            self.processingWindow.show()
-        except ValueError: #if you forget to add data to a box or put letters where numbers should go
+            
+            #open the window
+            self.processingWindow = processingMouseWindow(self.threadingPool, self.paramDict)   # 1) create new winodw and pass params and threading pool
+            self.runningWorkers.append(self.processingWindow)                                   # 2) put window object in runningWorkers list
+            self.processingWindow.closeWindow.connect(self.removeMouseFromList)                 # 3) remove window object from runningWorkers list function for when window closes
+            self.processingMouseList.addItem(
+                self.processingWindow.windowTitle(), 
+                os.path.dirname(os.path.abspath(__file__))[:-2] + 'imgs/processingIcon.png'     # 4) window is still open - put window title in the QList to keep track of and display status with icon
+                )               
+            self.processingWindow.show()                                                        # 5) show window and run worker
+
+        except ValueError:                                                                      #if you forget to add data to a box or put letters where numbers should go
             err = QErrorMessage(self)
             err.showMessage('missing a field or incorrect datatype entry for one of the logging boxes')
             err.exec()
             return
+        
 
+    def removeMouseFromList(self, window):
+        for i in range(self.processingMouseList.count()):
+            if self.processingMouseList.item(i).text() == window.windowTitle():
+                self.processingMouseList.takeItem(i)
+                break
+        self.processingMouseWindow.remove(window) 
+    
+    def mouseCompleteListUpdate(self,window):   
+        for i in range(self.processingMouseList.count()): 
+            if self.processsingMouseList.item(i).text() == window.windowTitle(): 
+                self.processingMouseList.takeItem(i)
+                self.processingMouseList.addItem(
+                        self.processsingMouseList.item(i).text() , 
+                        os.path.dirname(os.path.abspath(__file__))[:-2] + 'imgs/check-mark-icon-vector.jpg'     # 4) window is still open - put window title in the QList to keep track of and display status with icon
+                        )
+                break               
     # def copyToScratch(self):
     #     self.paramDict['subjectID']         = int(self.mouseID.toPlainText())
     #     self.paramDict['WRname']            = self.WRName.toPlainText()  
@@ -400,7 +456,6 @@ class BergamoDataViewer(QMainWindow):
     #     signals.allComplete.connect(self.onFullCompletion)
     #     signals.transmitData.connect(self.onDataTransmission)
     #     signals.error.connect(self.onError)
-        
     #     self.threadingPool.start(transferToScratchWorker(signals, self.paramDict))
         
     # def initiatePipeline(self):
@@ -496,7 +551,7 @@ class BergamoDataViewer(QMainWindow):
             err.exec()
     
     def updateMouseSelectionDropdown(self):
-        self.miceAvailable = glob( 'Y:/*')#self.paramDict['stagingDir'] +'/*')
+        self.miceAvailable = glob( 'Y:/*')
         print(self.miceAvailable)
         mice = []
         for file in self.miceAvailable:
@@ -530,7 +585,6 @@ class BergamoDataViewer(QMainWindow):
                 #ignore improperly logged data
                 pass
         self.datesToLook = [date.strftime('%m%d%y') for date in sorted(self.selectedPaths, reverse=True)] #sort dates and only return valid dates in order 
-        # self.datesToLook = [(file.split('\\')[-1]).split('_')[-1] for file in self.selectedPaths]
         self.updateDatesDropdown()
         self.WRName.setPlainText(self.selectedMouse)
     
@@ -591,11 +645,13 @@ class BergamoDataViewer(QMainWindow):
                 pix2 = page2.get_pixmap()
                 pix3 = page3.get_pixmap()
                 image1 = QImage(pix1.samples, pix1.width, pix1.height, pix1.stride, QImage.Format.Format_RGB888)
+                scaledImage1 = image1.scaled(1000, 500)
                 image2 = QImage(pix2.samples, (pix2.width), (pix2.height), pix2.stride, QImage.Format.Format_RGB888) #need to scale this to fit on screen
-                scaledImage2 = image2.scaled(700, 800)
+                scaledImage2 = image2.scaled(1000, 500)
                 image3 = QImage(pix3.samples, pix3.width, pix3.height, pix3.stride, QImage.Format.Format_RGB888)
+                # scaledImage3 = image3.scaled(600, 200)
                 if self.pageSelect ==1:
-                    pixmap1 = QPixmap.fromImage(image1)
+                    pixmap1 = QPixmap.fromImage(scaledImage1)
                     self.pdfLoc.setPixmap(pixmap1)
                 if self.pageSelect ==2:
                     pixmap2 = QPixmap.fromImage(scaledImage2)
