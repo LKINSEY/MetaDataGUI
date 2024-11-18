@@ -6,67 +6,71 @@ import matplotlib.pyplot as plt
 from datetime import datetime, date
 from aind_metadata_mapper.bergamo.session import ( BergamoEtl, 
                                                   JobSettings,
-                                                  RawImageInfo,
                                                   )
 import bergamo_rig
 from typing import Optional
-from aind_codeocean_pipeline_monitor.models import (
-    PipelineMonitorSettings,
-    CaptureSettings,
-)
 from aind_data_transfer_models.core import (
     ModalityConfigs,
     BasicUploadJobConfigs,
     SubmitJobRequest,
-    CodeOceanPipelineMonitorConfigs,
 )
 from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
-from codeocean.computation import RunParams, DataAssetsRunParam
-
-
-#from REST API documentation
-# to access these on local device run this command:
-    # pip install git+https://github.com/AllenNeuralDynamics/aind-data-transfer-service.git
-    # pip install git+https://github.com/AllenNeuralDynamics/aind-data-transfer-models.git
-# from aind_data_transfer_service.configs.job_configs import ModalityConfigs, BasicUploadJobConfigs
-# from pathlib import PurePosixPath
-# import json
-# import requests
-# from aind_data_transfer_models.core import ModalityConfigs, BasicUploadJobConfigs, SubmitJobRequest
-# from aind_data_schema_models.modalities import Modality
-# from aind_data_schema_models.platforms import Platform
-######################################################
-
 from main_utility import *
 
 
 class WorkerSignals(QObject):
-    stepComplete = pyqtSignal(str)      #emits a message to be read out in QListWidget before and afterevery function
-    nextStep = pyqtSignal(str)          #emits same as stepComplete, but will call a diff function to put diff stuff in list widget
-    allComplete = pyqtSignal()          #just a way of app to know everything is done and pdfs can be displayed
-    transmitData = pyqtSignal(tuple)
+    startingTransfer = pyqtSignal()
+    transferingSignal = pyqtSignal(str)
+    dataOnScratch = pyqtSignal(str)
+    processingStep = pyqtSignal(str)
     error = pyqtSignal(str)
-    
+    cloudTransfer = pyqtSignal()
+
+ 
+
+
 class metaDataWorker(QRunnable):
-    def __init__(self, signals, paramDict):
+    def __init__(self, signals, paramDict, whatToProcess):
         super().__init__()
         self.signals = signals
         self.params = paramDict
         self.sessionData = {}
         self.mouseDict = {}
+        self.processBool = whatToProcess #[behavior, behavior_videos, pophys]
     
     def run(self):
-        
-        # #error condition - missing text entery
-        # for key in self.params:
-        #     if not isinstance(self.params.get(key, ''), (list, str)) or len(str(self.params.get(key, '')))<2:
-        #         self.signals.error.emit('Missing Field Name - aborting process')
-        #         return
 
+
+        ############################ TRANSFER TO SCRATCH FIRST ################################
+        
         #Load Init JSON and mouseDict JSON and establish data paths
+        localPath = self.params.get('localPath')
+        scratchPath = self.params.get('pathToRawData')
         WRname = self.params.get('WRname')
         dateEnteredAs = self.params.get('date')
+        try:
+            dateTimeObj = datetime.strptime(dateEnteredAs,'%Y-%m-%d').date()
+            dateFileFormat = dateTimeObj.strftime('%m%d%y') #mmddyy
+        except ValueError:
+            dateFileFormat = str(dateEnteredAs) #already entered as mmddyy
+        sourceDir = localPath+f'/{WRname}/{dateFileFormat}'
+        destinationDir = scratchPath+f'/{WRname}/{dateFileFormat}/pophys'
+        
+        if not os.path.exists(destinationDir):
+            shutil.copytree(sourceDir, destinationDir, copy_function=self.verboseCopy)
+            self.signals.dataOnScratch.emit('Done Copying!')
+            for i in range(1, 3):  # Let 3 seconds go by so someone can see this message
+                QThreadPool.globalInstance().waitForDone(1000)  
+        else:
+            self.signals.dataOnScratch.emit('Data already on scratch!')
+            for i in range(1, 3):  # Let 3 seconds go by so someone can see this message
+                QThreadPool.globalInstance().waitForDone(1000) 
+        
+        #########################################################################################
+
+        #starting processing behavior
+        self.signals.processingStep.emit('Processing Behavior')
         try:
             dateTimeObj = datetime.strptime(dateEnteredAs,'%Y-%m-%d').date()
             dateFileFormat = dateTimeObj.strftime('%m%d%y') #mmddyy]
@@ -95,9 +99,8 @@ class metaDataWorker(QRunnable):
             self.signals.error.emit('Error in typing WR Name, either a tab, enter, or space was pressed -- aborting process')
             return
         if WRname in self.mouseDict:
-            self.signals.stepComplete.emit(f'{WRname} is an existing mouse')
+            print('This mouse exists')
         else:
-            self.signals.stepComplete.emit(f'{WRname} is a new mouse, logging in dictionary')
             self.mouseDict[WRname] = self.params.get('subjectID')
             with open(Path(stagingDir + '/mouseDict.json'), 'w') as f:
                 json.dump(self.mouseDict, f)
@@ -107,46 +110,51 @@ class metaDataWorker(QRunnable):
         stagingMouseSessionPath = f'Y:/{WRname}/{dateFileFormat}/'#turned into scratch location             #Path(stagingDir).joinpath( Path(f'{WRname}_{dateEnteredAs}'))
         rawDataPath = f'Y:/{WRname}/{dateFileFormat}/pophys'
 
-        if os.path.exists(sessionFolder):  #~os.path.exists(stagingMouseSessionPath) and os.path.exists(sessionFolder): #check if behavior folders have been processed
-            
-            #Step 3: Make folders for each of the behavior types
-            Path(stagingMouseSessionPath).mkdir(parents=True, exist_ok=True)                                    # makes mouse staging folder F:/staging/mouseWRname_mm-dd-yyyy
-            behavior_folder_staging = Path.joinpath(Path(stagingMouseSessionPath),Path('behavior'))
-            behavior_video_folder_staging = Path.joinpath(Path(stagingMouseSessionPath),Path('behavior_video'))
-            Path(behavior_folder_staging).mkdir(parents=True, exist_ok=True)                                    # puts behavior folder in staging folder
-            Path(behavior_video_folder_staging).mkdir(parents=True, exist_ok=True)                              # puts behavior video folder in staging folder
-            #let us know
-            self.signals.stepComplete.emit('Staging Folders Created')
+        if self.processBool[0] == 1:
+            self.signals.processingStep.emit('Processing Behavior - Process Bpod')
+            if os.path.exists(sessionFolder):  #~os.path.exists(stagingMouseSessionPath) and os.path.exists(sessionFolder): #check if behavior folders have been processed
+                
+                #Step 3: Make folders for each of the behavior types
+                Path(stagingMouseSessionPath).mkdir(parents=True, exist_ok=True)                                    # makes mouse staging folder F:/staging/mouseWRname_mm-dd-yyyy
+                behavior_folder_staging = Path.joinpath(Path(stagingMouseSessionPath),Path('behavior'))
+                behavior_video_folder_staging = Path.joinpath(Path(stagingMouseSessionPath),Path('behavior_video'))
+                Path(behavior_folder_staging).mkdir(parents=True, exist_ok=True)                                    # puts behavior folder in staging folder
+                Path(behavior_video_folder_staging).mkdir(parents=True, exist_ok=True)                              # puts behavior video folder in staging folder
+                #let us know
+                self.signals.stepComplete.emit('Staging Folders Created')
 
 
-        else:
-            if ~os.path.exists(stagingMouseSessionPath):
-                self.signals.error.emit('Session Folder Specified does not exist -- aborting process')
             else:
-                self.signals.error.emit('Staging Directory not found -- aborting process')
-            return
+                if ~os.path.exists(stagingMouseSessionPath):
+                    self.signals.error.emit('Session Folder Specified does not exist -- aborting process')
+                else:
+                    self.signals.error.emit('Staging Directory not found -- aborting process')
+                return
 
-        #Step 4: run extract_behavior using raw data found in sessionFolder
 
-        try:
-            self.signals.nextStep.emit('Extracting Behavior')
 
-            rc = extract_behavior(WRname, rawDataPath, behavior_folder_staging)
+            #Step 4: run extract_behavior using raw data found in sessionFolder
 
-            behavior_fname = f"{Path(sessionFolder).name}-bpod_zaber.npy"
-            self.signals.stepComplete.emit('Behavior Data Extracted Successfully')
-        except Exception:
-            self.signals.error.emit('Error extracting behavior -- check traceback -- aborting process')
-            traceback.print_exc() 
-            return
+            try:
+                self.signals.nextStep.emit('Extracting Behavior')
+
+                rc = extract_behavior(WRname, rawDataPath, behavior_folder_staging)
+
+                behavior_fname = f"{Path(sessionFolder).name}-bpod_zaber.npy"
+                self.signals.stepComplete.emit('Behavior Data Extracted Successfully')
+            except Exception:
+                self.signals.error.emit('Error extracting behavior -- check traceback -- aborting process')
+                traceback.print_exc() 
+                return        
+        else:
+            self.signals.processingStep.emit('Skipping Bpod processing')
 
         #Step 5: Generate Rig JSON
         try:
-            self.signals.nextStep.emit('Generating Rig JSON')
+            self.signals.processingStep.emit('Generating Rig Json')
             rig_json = bergamo_rig.generate_rig_json()
             with open(Path(stagingMouseSessionPath).joinpath(Path('rig.json')), 'w') as json_file:
                 json_file.write(rig_json)
-            self.signals.stepComplete.emit('Rig JSON Created Successfully!')
         except Exception:
             self.signals.error.emit('Error generating rig json -- check traceback -- aborting process')
             traceback.print_exc() 
@@ -154,6 +162,7 @@ class metaDataWorker(QRunnable):
         
         #Step 6: Generate Session JSON
         try:
+            self.signals.processingStep.emit('Generating Session Json')
             self.signals.nextStep.emit('Generating Session JSON')
             scratchInput = Path(self.params.get('pathToRawData') + f'/{WRname}/{dateFileFormat}/pophys')
             behavior_data, hittrials, goodtrials, behavior_task_name, is_side_camera_active, is_bottom_camera_active,starting_lickport_position = prepareSessionJSON(behavior_folder_staging, behavior_fname)
@@ -181,70 +190,41 @@ class metaDataWorker(QRunnable):
                                             trial_num                   = sum(goodtrials))
             etl_job = BergamoEtl(job_settings=user_settings,)
             session_metadata = etl_job.run_job()
-            self.signals.stepComplete.emit('Session JSON Created Successfully!')
         except Exception:
             self.signals.error.emit('Error generating session json -- check traceback -- aborting process')
             traceback.print_exc() 
             return
-        #Step 7: Stage Videos
-        try:
-            self.signals.nextStep.emit('Staging Videos')
-            stagingVideos(behavior_data, behavior_video_folder_staging)
-            self.signals.stepComplete.emit('Video Staged Successfully!')
-        except Exception:
-            self.signals.error.emit('Error Staging Videos -- check traceback -- aborting process')
-            traceback.print_exc() 
-            pass
+        #Step 7: Stage Videos (if chosen)
+        if self.processBool[1] == 1:
+            try:
+                self.signals.processingStep.emit('Staging Videos')
+                stagingVideos(behavior_data, behavior_video_folder_staging)
+            except Exception:
+                self.signals.error.emit('Error Staging Videos -- check traceback -- aborting process')
+                traceback.print_exc() 
+                pass
+        else:
+            self.signals.processingStep.emit('Skipping Videos')
+
         #Step 8: Create and display PDFs
         try:
-            self.signals.nextStep.emit('Making PDFs')
+            self.signals.processingStep.emit('Plotting...')
             createPDFs(stagingMouseSessionPath, behavior_data, str(self.sessionData['subject_id']), dateEnteredAs)
-            self.signals.stepComplete.emit('PDFs Successfully Made!')
         except Exception:
             self.signals.error.emit('Error Generating PDFs -- check traceback -- aborting process')
             traceback.print_exc() 
             return
 
         #Complete!
-        self.signals.transmitData.emit( (WRname, dateEnteredAs))
-        self.signals.nextStep.emit(f'{WRname} is complete!')
+        self.signals.processingStep.emit('DONE!')
         return
-
-
-
-class transferToScratchWorker(QRunnable):
-    def __init__(self, signals, pathDict):
-        super().__init__()
-        self.signals = signals
-        self.params = pathDict
     
-    def run(self):
-        startTime = datetime.now()
-        localPath = self.params.get('localPath')
-        scratchPath = self.params.get('pathToRawData')
-        thisMouse = self.params.get('WRname')
-        dateEnteredAs = self.params.get('date')
-        try:
-            dateTimeObj = datetime.strptime(dateEnteredAs,'%Y-%m-%d').date()
-            dateFileFormat = dateTimeObj.strftime('%m%d%y') #mmddyy]
-        except ValueError:
-            dateFileFormat = str(dateEnteredAs) #already entered as mmddyy
-        sourceDir = localPath+f'/{thisMouse}/{dateFileFormat}'
-        destinationDir = scratchPath+f'/{thisMouse}/{dateFileFormat}/pophys'
-        self.signals.nextStep.emit('Copying Raw Data To Scratch - Transfer Worker')
-        
-        if not os.path.exists(destinationDir):
-            shutil.copytree(sourceDir, destinationDir)
-            finishTime = datetime.now()
-            deltaT = (finishTime - startTime)#.strftime('%H:%M:%S.%f')
-            self.signals.nextStep.emit('Data Successfully copied to scratch')
-            self.signals.nextStep.emit(f'This took: {deltaT}')
-        else:
-            self.signals.nextStep.emit('Data Already Exists on Scratch')
-            finishTime = datetime.now()
-            deltaT = (finishTime - startTime)#.strftime('%H:%M:%S.%f')
-            self.signals.nextStep.emit(f'This took: {deltaT}')
-        
+    def verboseCopy(self, src, dest):
+        fileBeingCopied = src.split('/')[-1]
+        filesInSrc = len(os.listdir(src))
+        filesInDest = len(os.listdir(dest))
+        self.signals.transferingSignal.emit(f'{fileBeingCopied} {filesInDest}/{filesInSrc}')
+        return shutil.copy2(src,dest) 
 
 #currently this is just for uploading 1 job to cloud
 class cloudTransferWorker(QRunnable):
@@ -252,8 +232,9 @@ class cloudTransferWorker(QRunnable):
         super().__init__()
         self.signals = signals
         self.params = params
+
+
     def run(self):
-        self.signals.nextStep.emit('Sending Data To The Cloud')
         thisMouse = self.params.get('WRname')
         dateEnteredAs = self.params.get('date')
         subject_id = self.params['subjectID']
@@ -261,7 +242,7 @@ class cloudTransferWorker(QRunnable):
         project_name = "Brain Computer Interface"
         s3_bucket = "private"
         platform = Platform.SINGLE_PLANE_OPHYS
-        acquisition_datetime = datetime.fromisoformat("2024-10-23T15:30:39")#find correct way to state the acq_datetime
+        # acquisition_datetime = datetime.fromisoformat("2024-10-23T15:30:39")#find correct way to state the acq_datetime
         codeocean_pipeline_id = "a2c94161-7183-46ea-8b70-79b82bb77dc0"
         codeocean_pipeline_mount: Optional[str] = "ophys"
 
@@ -284,7 +265,7 @@ class cloudTransferWorker(QRunnable):
             s3_bucket=s3_bucket,
             platform=platform,
             subject_id=subject_id,
-            acq_datetime=acquisition_datetime.strftime("%Y-%m-%d %H:%M:%S"),
+            acq_datetime=self.params['session_end_time'],#acquisition_datetime.strftime("%Y-%m-%d %H:%M:%S"),
             modalities=[pophys_config, behavior_config, behavior_video_config],
             metadata_dir=PurePosixPath(f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}"),
             process_capsule_id=codeocean_pipeline_id,
@@ -298,9 +279,9 @@ class cloudTransferWorker(QRunnable):
         post_request_content = json.loads(submit_request.model_dump_json(exclude_none=True))
         #Submit request
         submit_job_response = requests.post(url=service_url, json=post_request_content)
-        print(submit_job_response.status_code)
-        print(submit_job_response.json())
-        self.signals.nextStep.emit('Data Sent!')
+        # print(submit_job_response.status_code)
+        # print(submit_job_response.json())
+        # self.signals.nextStep.emit('Data Sent!')
         
 
         

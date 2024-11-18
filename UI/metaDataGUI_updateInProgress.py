@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime, date
 from PyQt6.QtWidgets import (
     QListWidget, 
-    QCheckBox, 
+    QListView,
     QPushButton, 
     QComboBox,  
     QHBoxLayout, 
@@ -28,12 +28,16 @@ from PyQt6.QtCore import (
 from PyQt6.QtGui import (
     QImage, 
     QPixmap, 
-    QColor
+    QColor,
+    QMovie,
+    QIcon,
+    QStandardItemModel, 
+    QStandardItem
 )
 from datetime import datetime, date
 import fitz #PyMuPDF
 from main_utility import *
-from metaDataWorker import WorkerSignals, metaDataWorker, transferToScratchWorker, cloudTransferWorker
+from metaDataWorker import WorkerSignals, metaDataWorker, cloudTransferWorker
 
 today = str(date.today())
 print('Running Data Viewer on:', today)
@@ -72,13 +76,15 @@ class userValidatableTextEdit(QTextEdit):
             super().keyPressEvent(event)
         
 class processingMouseWindow(QWidget):
-    def __init__(self, threadingPool, localWorkerParams):
+    closeWindow = pyqtSignal(object)
+    def __init__(self, threadingPool, localWorkerParams, whatToProcess):
         super().__init__()
-        self.setWindowTitle("Secondary Window")
-        self.setGeometry(100, 100, 300, 200)
         self.threadingPool = threadingPool
         self.params = localWorkerParams
-        closeWindow = pyqtSignal(object)
+        self.setWindowTitle(f"{self.params['WRname']}_{self.params['date']}")
+        self.setGeometry(100, 100, 300, 200)
+        self.processBool = whatToProcess
+        
         '''
         TODO:
         Design Layout to show mouse wr name at tope
@@ -86,33 +92,62 @@ class processingMouseWindow(QWidget):
         button at the bottom that becomes active if processing is done or if error occurs
         '''
         self.layout = QVBoxLayout()
-        self.mouseWorking = QLabel(f'Processing {str(self.params['WRname'])}')
+        self.mouseWorking = QLabel(f'Processing {str(self.params['WRname'])} for session {self.params['date']}')
         self.layout.addWidget(self.mouseWorking)
+
         
         #put gifs here
+        os.path.dirname(os.path.abspath(__file__))[:-2] + 'imgs/file transfer gif.gif'
         self.gifLayout = QHBoxLayout()
-        #self.gifLayout.addWidget(self.fileTransferGif)
-        #self.gifLayout.addWidget(self.processBehaviorGif)
+        self.fileTransferGif = QMovie(os.path.dirname(os.path.abspath(__file__))[:-2] + 'imgs/file transfer gif.gif')
+        self.gileTransferGif_label = QLabel()
+        self.gileTransferGif_label.setMovie(self.fileTransferGif)
+        self.processBehaviorGif = QMovie(os.path.dirname(os.path.abspath(__file__))[:-2] + 'imgs/mouse behavior gif.gif')
+        self.processBehaviorGif_label = QLabel()
+        self.processBehaviorGif_label.setMovie(self.processBehaviorGif)
+        self.gifLayout.addWidget(self.gileTransferGif_label)
+        self.gifLayout.addWidget(self.processBehaviorGif_label)
         self.layout.addLayout(self.gifLayout)
         
-        
+        #status label
+        self.statusLabel = QLabel('Processing') #TODO: will have descriptive status updates here
+        self.layout.addWidget(self.statusLabel)
         self.setLayout(self.layout)
-
+        self.show()
         self.transferAndProcess()
+
     def transferAndProcess(self):
         #set up signals
-        signals = WorkerSignals()
-        signals.nextStep.connect(self.onNextStep)
-        signals.stepComplete.connect(self.onStepComplete)
-        signals.allComplete.connect(self.onFullCompletion)
-        signals.transmitData.connect(self.onDataTransmission)
+        signals = WorkerSignals() #TODO: make these signals better
+        signals.startingTransfer.connect(self.fileTransferEvent)
+        signals.transferingSignal.connect(self.fileTransferUpdate)
+        signals.dataOnScratch.connect(self.behaviorProcessingEvent)
         signals.error.connect(self.onError)
-        self.threadingPool.start(transferToScratchWorker(signals, self.paramDict))
+        self.threadingPool.start(metaDataWorker(signals, self.params, self.processBool))
 
+    def fileTransferEvent(self):
+        self.fileTransferGif.start()
+    
+    def fileTransferUpdate(self, message):
+        self.statusLabel.setText(f'Copying {message} to scratch')
+
+    def behaviorProcessingEvent(self, message):
+        self.statusLabel.setText(message)
+        self.fileTransferGif.stop()
+        self.processBehaviorGif.start()
+    
+    def behaviorProcessingUpdate(self,message):
+        self.statusLabel.setText(message)
 
     def closeEvent(self,event):
         self.closeWindow.emit(self)
         super().closeEvent(event)
+
+    def onError(self, message):
+        traceback.print_exc() 
+        err = QErrorMessage(self)
+        err.showMessage(message)
+        err.exec()
 
 
 class BergamoDataViewer(QMainWindow):
@@ -182,13 +217,16 @@ class BergamoDataViewer(QMainWindow):
         self.mouseEntryLabel = QGroupBox('Mouse Info') #goes left top
         self.mouseEntryLabel.setFixedSize(800,350)
 
-        self.processingStatusListLabel = QGroupBox('Processing Mice') #goes right top
-        self.processingStatusListLabel.setFixedSize(200,350)
+        self.processingMouseListLabel = QGroupBox('Processing Mice') #goes right top
+        self.processingMouseListLabel.setFixedSize(200,350)
         
+        #Setting up the "whats processing"  list
         self.processingLayout = QVBoxLayout()
-        self.processingStatusList = QListWidget(self)
-        self.processingLayout.addWidget(self.processingStatusList) # going inside processingStatusListLabel
-        self.processingStatusListLabel.setLayout(self.processingLayout)
+        self.processingMouseList = QListView(self)
+        #so that we can add images next to this list, we will use QStandardItemModel
+        self.model = QStandardItemModel()
+        self.processingLayout.addWidget(self.processingMouseList) # going inside processingMouseList
+        self.processingMouseListLabel.setLayout(self.processingLayout)
 
         #mouse entry AND processing status both fit inside mouseEntry label
         self.mouseEntryLayout = QHBoxLayout()
@@ -206,7 +244,7 @@ class BergamoDataViewer(QMainWindow):
 
         # Left label is entry area, right label is list
         self.mouseEntryLayout.addWidget(self.mouseEntryLabel) 
-        self.mouseEntryLayout.addWidget(self.processingStatusListLabel)        
+        self.mouseEntryLayout.addWidget(self.processingMouseListLabel)        
 
         #Layer 1
         self.WRName = userValidatableTextEdit()                 #Define Edit
@@ -278,18 +316,10 @@ class BergamoDataViewer(QMainWindow):
         self.notesLabel.setLayout(self.notesLayout)
         self.mouseEntryLayout_layer4.addWidget(self.notesLabel)
 
-        # TODO: COMBINE BUTTONS
-        #putting a "transfer local data to scratch" button here
         self.processMouseButton = QPushButton('Process Mouse')
         self.mainMouseEntryLayout.addWidget(self.processMouseButton)
         self.processMouseButton.clicked.connect(self.processMouse)#(self.copyToScratch)
-        
-        
-        #Process Data Button goes after data is entered
-        # self.processDataButton = QPushButton('Process Data')
-        # self.mainMouseEntryLayout.addWidget(self.processDataButton)
-        # # self.processDataButton.clicked.connect(self.initiatePipeline)
-        
+
         #######################################################
         ##############  Display Plots #########################
         #######################################################
@@ -405,23 +435,34 @@ class BergamoDataViewer(QMainWindow):
             self.paramDict['localPath']         = 'F:/BCI/'
             
             #open the window
-            self.processingWindow = processingMouseWindow(self.threadingPool, self.paramDict)   # 1) create new winodw and pass params and threading pool
-            self.runningWorkers.append(self.processingWindow)                                   # 2) put window object in runningWorkers list
-            self.processingWindow.closeWindow.connect(self.removeMouseFromList)                 # 3) remove window object from runningWorkers list function for when window closes
-            self.processingMouseList.addItem(
-                self.processingWindow.windowTitle(), 
-                os.path.dirname(os.path.abspath(__file__))[:-2] + 'imgs/processingIcon.png'     # 4) window is still open - put window title in the QList to keep track of and display status with icon
-                )               
-            self.processingWindow.show()                                                        # 5) show window and run worker
-
+            try:
+                self.processingWindow = processingMouseWindow(                                      # 1) create new winodw and pass params and threading pool
+                    self.threadingPool, 
+                    self.paramDict,
+                    processingArray
+                    )   
+                self.runningWorkers.append((self.processingWindow, f'{self.paramDict['WRname']}_{self.paramDict['date']}') )                         # 2) put window object in runningWorkers list
+                self.processingWindow.closeWindow.connect(self.removeMouseFromList)                 # 3) remove window object from runningWorkers list function for when window closes
+                listItem = QStandardItem(f'{self.paramDict['WRname']}_{self.paramDict['date']}')
+                iconStatus = QIcon(os.path.dirname(os.path.abspath(__file__))[:-2] + 'imgs/processingIcon.png')
+                listItem.setData(iconStatus, Qt.ItemDataRole.DecorationRole)  # Set the icon
+                self.model.appendRow(listItem)
+                self.processingMouseList.setModel(self.model)          
+                self.processingWindow.show()                                                        # 5) show window and run worker
+            except Exception as e:
+                #if we can't open the window don't run the process
+                print('NOT OPENING WINDOW - check traceback', e) 
+                err = QErrorMessage(self)
+                traceback.print_exc() 
+                return
         except ValueError:                                                                      #if you forget to add data to a box or put letters where numbers should go
             err = QErrorMessage(self)
             err.showMessage('missing a field or incorrect datatype entry for one of the logging boxes')
             err.exec()
             return
-        
-
+    #TODO: fix this
     def removeMouseFromList(self, window):
+        print('THIS WORKS WHEN CLOSE')
         for i in range(self.processingMouseList.count()):
             if self.processingMouseList.item(i).text() == window.windowTitle():
                 self.processingMouseList.takeItem(i)
@@ -434,84 +475,41 @@ class BergamoDataViewer(QMainWindow):
                 self.processingMouseList.takeItem(i)
                 self.processingMouseList.addItem(
                         self.processsingMouseList.item(i).text() , 
-                        os.path.dirname(os.path.abspath(__file__))[:-2] + 'imgs/check-mark-icon-vector.jpg'     # 4) window is still open - put window title in the QList to keep track of and display status with icon
+                        QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))[:-2] + 'imgs/check-mark-icon-vector.jpg'))     # 4) window is still open - put window title in the QList to keep track of and display status with icon
                         )
                 break               
-    # def copyToScratch(self):
-    #     self.paramDict['subjectID']         = int(self.mouseID.toPlainText())
-    #     self.paramDict['WRname']            = self.WRName.toPlainText()  
-    #     self.paramDict['wavelength']        = int(self.imageWaveLength.toPlainText())
-    #     self.paramDict['imagingDepth']      = int(self.imagingDepth.toPlainText())
-    #     self.paramDict['experimenterName']  = self.experimenterName.toPlainText()
-    #     self.paramDict['notes']             = self.notes.toPlainText()
-    #     self.paramDict['date']              = self.sessionDate.toPlainText()
-    #     self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
-    #     self.paramDict['pathToRawData']     = dataDir #'Y:/'
-    #     self.paramDict['localPath']         = 'F:/BCI/'
+
+    def selectFromQList(self, item):
         
-    #     #set up signals
-    #     signals = WorkerSignals()
-    #     signals.nextStep.connect(self.onNextStep)
-    #     signals.stepComplete.connect(self.onStepComplete)
-    #     signals.allComplete.connect(self.onFullCompletion)
-    #     signals.transmitData.connect(self.onDataTransmission)
-    #     signals.error.connect(self.onError)
-    #     self.threadingPool.start(transferToScratchWorker(signals, self.paramDict))
+        windowTitle = item[0]
+        mouseWRname = windowTitle.split('\t')[0]
+        date = windowTitle.split('\t')[1]
+        self.dataPathEntry = f"Y:/{mouseWRname}/{date}"
+        with open(self.dataPathEntry + '/session.json', 'r') as f:
+          sessionParams = json.load(f)
         
-    # def initiatePipeline(self):
-    #     print('INITIATING PIPELINE HERE ------------------------------------')
-    #     #load textboxes into dictionary to give to worker
-    #     self.paramDict['subjectID']         = int(self.mouseID.toPlainText())
-    #     self.paramDict['WRname']            = self.WRName.toPlainText()  
-    #     self.paramDict['wavelength']        = int(self.imageWaveLength.toPlainText())
-    #     self.paramDict['imagingDepth']      = int(self.imagingDepth.toPlainText())
-    #     self.paramDict['experimenterName']  = self.experimenterName.toPlainText()
-    #     self.paramDict['notes']             = self.notes.toPlainText()
-    #     self.paramDict['date']              = self.sessionDate.toPlainText()
-    #     self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
-    #     self.paramDict['pathToRawData']     = dataDir #'Y:/'
-    #     self.paramDict['localPath']         = 'F:/BCI/'
+        self.mouseID.setPlainText(sessionParams['subject_id'])
+        self.WRName.setPlainText(mouseWRname)
+        self.imageWaveLength.setPlainText(sessionParams['data_streams'][0]['light_sources'][0]['wavelength'])
+        self.imagingDepth.setPlainText(sessionParams['data_streams'][1]['ophys_fovs'][0]['imaging_depth'])
+        self.experimenterName.setPlainText(sessionParams["experimenter_full_name"][0])
+        self.notes.setPlainText(sessionParams["notes"])
+        self.sessionDate.setPlainText(date)
+        self.targetStruct.setPlainText(['data_streams'][1]['ophys_fovs'][0]['targeted_structure'])
 
-    #     #set up signals
-    #     signals = WorkerSignals()
-    #     signals.nextStep.connect(self.onNextStep)
-    #     signals.stepComplete.connect(self.onStepComplete)
-    #     signals.allComplete.connect(self.onFullCompletion)
-    #     signals.transmitData.connect(self.onDataTransmission)
-    #     signals.error.connect(self.onError)
-
-    #     #send off worker to do its thing
-    #     self.threadingPool.start(metaDataWorker(signals, self.paramDict))
-
-    # #Worker Functions
-    # def onNextStep(self, message):
-    #     self.statusList.addItem(message)
-    #     self.statusList.scrollToBottom()
-    # def onStepComplete(self, message):
-    #     self.statusList.addItem(message)
-    #     self.statusList.scrollToBottom()
-    # def onFullCompletion(self, message):
-    #     self.statusList.addItem(message)
-    #     self.statusList.scrollToBottom()
-    # def onError(self, message):
-    #     self.statusList.addItem(message)
-    #     self.statusList.scrollToBottom()
-    #     traceback.print_exc() 
-    #     err = QErrorMessage(self)
-    #     err.showMessage(message)
-    #     err.exec()
-    # def onDataTransmission(self, messageTuple):
-    #     self.updateMouseSelectionDropdown()
-    #     self.updateDatesDropdown()
-    #     mouse, date = messageTuple
-    #     index = self.mouseDateDropdown.findText(date)
-    #     if index != -1:
-    #         self.statusList.addItem(f'Showing PDFs for {mouse}')
-    #         self.mouseDateDropdown.setCurrentIndex(index)
-    #Back to app functions
+        self.paramDict['subjectID']         = int(self.mouseID.toPlainText())
+        self.paramDict['WRname']            = self.WRName.toPlainText()  
+        self.paramDict['wavelength']        = int(self.imageWaveLength.toPlainText())
+        self.paramDict['imagingDepth']      = int(self.imagingDepth.toPlainText())
+        self.paramDict['experimenterName']  = self.experimenterName.toPlainText()
+        self.paramDict['notes']             = self.notes.toPlainText()
+        self.paramDict['date']              = self.sessionDate.toPlainText()
+        self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
+        self.paramDict['pathToRawData']     = self.dataPathEntry
+        self.paramDict['localPath']         = 'F:/BCI/'
+        self.paramDict['session_end_time'] = sessionParams['session_end_time']
 
     def sendToCloud(self):
-        # import yaml
         
         #changing this path to be scratch instead of F:/Staging
         self.dataPathEntry = f"Y:/{self.WRName.toPlainText()}/{self.sessionDate.toPlainText()}"
@@ -528,28 +526,32 @@ class BergamoDataViewer(QMainWindow):
             self.paramDict['notes']             = self.notes.toPlainText()
             self.paramDict['date']              = self.sessionDate.toPlainText()
             self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
-            self.paramDict['pathToRawData']     = dataDir #'Y:/'
+            self.paramDict['pathToRawData']     = self.dataPathEntry
             self.paramDict['localPath']         = 'F:/BCI/'
-            self.paramDict['sessionStart'] = sessionParams['session_start_time']
+            self.paramDict['session_end_time'] = sessionParams['session_end_time']
             
             #set up signals
             signals = WorkerSignals()
-            signals.nextStep.connect(self.onNextStep)
-            signals.stepComplete.connect(self.onStepComplete)
-            signals.allComplete.connect(self.onFullCompletion)
-            signals.transmitData.connect(self.onDataTransmission)
             signals.error.connect(self.onError)
+            signals.cloudTransfer.connect(self.sentToCloudUpdate)
             
             #send off worker to do its thing
             self.threadingPool.start(cloudTransferWorker(signals, self.paramDict))
-            
-            
+
         except Exception:
             err = QErrorMessage(self)
             traceback.print_exc() 
             err.showMessage('Issue sending off data to aws... check your data')
             err.exec()
     
+    def sentToCloudUpdate(self): 
+        self.sendToCloudButton.setDisabled(True) #easiest way to show your data is sent
+
+    def onError(self, message):
+        traceback.print_exc() 
+        err = QErrorMessage(self)
+        err.showMessage(message)
+        err.exec()
     def updateMouseSelectionDropdown(self):
         self.miceAvailable = glob( 'Y:/*')
         print(self.miceAvailable)
@@ -573,6 +575,7 @@ class BergamoDataViewer(QMainWindow):
         self.mouseNameDropDown.setCurrentIndex(currentindex)
 
     def selectionChanged(self, index):
+        self.sendToCloudButton.setDisabled(False) #easiest way to show your data is sent
         self.datesDropDownActive = True
         self.selectedMouse = self.mouseNameDropDown.currentText()
         self.WRName.setPlainText(self.selectedMouse)
