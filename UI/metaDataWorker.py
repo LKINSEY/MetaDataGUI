@@ -4,6 +4,7 @@ from pathlib import Path, PurePosixPath
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime, date
+from glob import glob
 from aind_metadata_mapper.bergamo.session import ( BergamoEtl, 
                                                   JobSettings,
                                                   RawImageInfo,
@@ -30,6 +31,9 @@ from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
 from codeocean.computation import RunParams, DataAssetsRunParam
 from codeocean.data_asset import DataAssetParams
+
+
+import subprocess # FOR ROBOCOPY
 
 #from REST API documentation
 # to access these on local device run this command:
@@ -162,7 +166,11 @@ class metaDataWorker(QRunnable):
         try:
             self.signals.nextStep.emit('Generating Session JSON')
             scratchInput = Path(self.params.get('pathToRawData') + f'/{WRname}/{dateFileFormat}/pophys')
-            behavior_data, hittrials, goodtrials, behavior_task_name, is_side_camera_active, is_bottom_camera_active,starting_lickport_position = prepareSessionJSON(behavior_folder_staging, behavior_fname)
+            try:
+                behavior_data, hittrials, goodtrials, behavior_task_name, is_side_camera_active, is_bottom_camera_active,starting_lickport_position = prepareSessionJSON(behavior_folder_staging, behavior_fname)
+            except:
+                print('no-learning session?')
+                behavior_data, hittrials, goodtrials, behavior_task_name, is_side_camera_active, is_bottom_camera_active,starting_lickport_position = prepareSessionJSON(behavior_folder_staging, behavior_fname,nobehavior=True)# there is probably no behavior
             user_settings = JobSettings(    input_source                = Path(scratchInput), #date folder local i.e. Y:/BCI93/101724/pophys
                                             output_directory            = Path(stagingMouseSessionPath), #staging dir folder scratch  i.e. Y:/BCI93/101724
                                             experimenter_full_name      = [str(self.sessionData['experimenter_full_name'][0])],
@@ -204,7 +212,7 @@ class metaDataWorker(QRunnable):
         #Step 8: Create and display PDFs
         try:
             self.signals.nextStep.emit('Making PDFs')
-            createPDFs(stagingMouseSessionPath, behavior_data, str(self.sessionData['subject_id']), dateEnteredAs)
+            createPDFs(stagingMouseSessionPath, behavior_data, str(self.sessionData['subject_id']), dateEnteredAs,WRname)
             self.signals.stepComplete.emit('PDFs Successfully Made!')
         except Exception:
             self.signals.error.emit('Error Generating PDFs -- check traceback -- aborting process')
@@ -241,6 +249,8 @@ class transferToScratchWorker(QRunnable):
         
         if not os.path.exists(destinationDir):
             shutil.copytree(sourceDir, destinationDir)
+            
+            
             finishTime = datetime.now()
             deltaT = (finishTime - startTime)#.strftime('%H:%M:%S.%f')
             self.signals.nextStep.emit('Data Successfully copied to scratch')
@@ -250,6 +260,27 @@ class transferToScratchWorker(QRunnable):
             finishTime = datetime.now()
             deltaT = (finishTime - startTime)#.strftime('%H:%M:%S.%f')
             self.signals.nextStep.emit(f'This took: {deltaT}')
+        self.signals.nextStep.emit('robocopy check')
+        try:
+            options = "/MIR /FFT /Z /R:5 /W:1 /NDL /NFL"
+            robocopy_command = f"robocopy {sourceDir} {destinationDir} {options}"
+            result = subprocess.run(robocopy_command, shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            # Check the return code
+            if result.returncode == 0:
+                self.signals.nextStep.emit("No files were copied (source and destination are identical).")
+            elif result.returncode == 1:
+                self.signals.nextStep.emit("All files were copied successfully.")
+            elif result.returncode == 2:
+                self.signals.nextStep.emit("Extra files were deleted.")
+            elif result.returncode == 3:
+                self.signals.nextStep.emit("Some files were copied successfully, and some were skipped.")
+            else:
+                self.signals.nextStep.emit(f"Robocopy encountered an error. Exit code: {result.returncode}")
+                print(result.stderr)
+            self.signals.nextStep.emit('robocopy check done')
+        except Exception as e:
+            self.signals.nextStep.emit(f"An unexpected error occurred: {e}")
+            self.signals.nextStep.emit('robocopy check failed')
         
 
 #currently this is just for uploading 1 job to cloud
@@ -263,12 +294,28 @@ class cloudTransferWorker(QRunnable):
         thisMouse = self.params.get('WRname')
         dateEnteredAs = self.params.get('date')
         subject_id = self.params['subjectID']
-        # For testing purposes, use dev url
-        service_url = "http://aind-data-transfer-service-dev/api/v1/submit_jobs"
+        service_url = "http://aind-data-transfer-service/api/v1/submit_jobs" # For testing purposes, use dev url
         project_name = "Brain Computer Interface"
         s3_bucket = "private"
         platform = Platform.SINGLE_PLANE_OPHYS
-        acq_datetime = datetime.fromisoformat("2024-10-23T15:30:39")#find correct way to state the acq_datetime
+        metaDataDir = f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}"
+        print(self.params['sessionStart'])
+# =============================================================================
+#         ### for getting the correct datetime ###########################
+#         
+#         THIS IS WRONG!!!
+#         
+#         
+#         aq_times = [os.path.getmtime(acqFile) for acqFile in glob(metaDataDir+'/pophys/*')]## THISIS VERY WROOONG!!!
+#         sorted_aq_times = np.sort(aq_times)
+#         iso_acq_time = datetime.fromtimestamp(sorted_aq_times[-1]).isoformat()
+#         acquisition_datetime = datetime.fromisoformat(iso_acq_time)
+#         
+#         THIS IS WRONG!!!
+#         
+#         ##################################################################
+# =============================================================================
+        
         codeocean_pipeline_id = "a2c94161-7183-46ea-8b70-79b82bb77dc0"
         codeocean_pipeline_mount: Optional[str] = "ophys"
 
@@ -279,33 +326,37 @@ class cloudTransferWorker(QRunnable):
                         pipeline_id=codeocean_pipeline_id,
                         data_assets=[DataAssetsRunParam(id="", mount=codeocean_pipeline_mount)],
                     ),
-                    capture_settings=CaptureSettings(),
                 )
             ],
         )
         #adding codeocean capsule ID and mount
         pophys_config = ModalityConfigs(
             modality=Modality.POPHYS,
-            source=(f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/pophys"),
+            source=(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/pophys"),
         )
         behavior_video_config = ModalityConfigs(
             modality=Modality.BEHAVIOR_VIDEOS,
             compress_raw_data=False,
-            source=(f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior_video"),
+            source=(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior_video"),
         )
         behavior_config = ModalityConfigs(
             modality=Modality.BEHAVIOR,
-            source=(f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior"),
+            source=(f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}/behavior"),
         )
+        
         upload_job_configs = BasicUploadJobConfigs(
-            project_name=project_name,
             s3_bucket=s3_bucket,
             platform=platform,
             subject_id=subject_id,
-            acq_datetime=acq_datetime,
+            acq_datetime= datetime.strptime(self.params['sessionStart'], "%Y-%m-%dT%H:%M:%S.%f%z").strftime("%Y-%m-%d %H:%M:%S"),
             modalities=[pophys_config, behavior_config, behavior_video_config],
-            codeocean_configs=codeocean_configs,
+            metadata_dir=PurePosixPath(metaDataDir),
+            process_capsule_id=codeocean_pipeline_id,
+            project_name=project_name,
+            input_data_mount=codeocean_pipeline_mount,
+            force_cloud_sync=False,
         )
+
         upload_jobs = [upload_job_configs]
         submit_request = SubmitJobRequest(upload_jobs=upload_jobs)
         post_request_content = json.loads(submit_request.model_dump_json(exclude_none=True))
