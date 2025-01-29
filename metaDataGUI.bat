@@ -1,5 +1,5 @@
 @ECHO OFF
-call conda activate codeocean
+call conda activate codeocean2
 set folderPath=%~dp0UI
 echo "%folderPath%"
 if exist "%folderPath%" (
