@@ -473,7 +473,7 @@ class BergamoDataViewer(QMainWindow):
         print(sessionParams['session_start_time'])
         
         try:
-            self.paramDict['subjectID']         = int(self.mouseID.toPlainText())
+            self.paramDict['subjectID']         = str(self.mouseID.toPlainText())
             self.paramDict['WRname']            = self.WRName.toPlainText()  
             self.paramDict['wavelength']        = int(self.imageWaveLength.toPlainText())
             self.paramDict['imagingDepth']      = int(self.imagingDepth.toPlainText())
