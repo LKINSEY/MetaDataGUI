@@ -427,9 +427,11 @@ def stagingVideos(behavior_data, behavior_video_folder_staging):
     original_movie_basefolder = Path('//10.128.54.109/Data/Behavior_videos')
     side_folders = []
     bottom_folders = []
+    
     for m in behavior_data['behavior_movie_name_list']:
-        if type(m) == np.ndarray:
+        if type(m) == np.ndarray or type(m) == list:
             for movie_name in m:
+                
                 if 'side' in movie_name:
                     side_folders.append(original_movie_basefolder.joinpath(Path(*movie_name.split('/')[5:-1])))
                 elif 'bottom' in movie_name:
@@ -471,14 +473,19 @@ def stagingVideos(behavior_data, behavior_video_folder_staging):
     print('{} side camera videos and {} bottom camera videos staged'.format(len(mpeg_files_side),len(mpeg_files_bottom)))
 
 
-def createPDFs(staging_dir, behavior_data, mouseID, date):
+def createPDFs(staging_dir, behavior_data, mouseID, date,WRname):
     from matplotlib.backends.backend_pdf import PdfPages
 
     md = load_metadata_from_folder(staging_dir)#Path(staging_dir).joinpath(Path('session.json'))
     fig,ax = plot_session(md['session'])
-    
+    ax.set_title('{} ({}) -  {}'.format(WRname, mouseID, date))
     md['session']['session_start_time']
-    [fig2,fig3] = plot_behavior(behavior_data, mouseID,date)
+    try:
+        [fig2,fig3] = plot_behavior(behavior_data, mouseID,date)
+    except:
+        print('no behavior plot..')
+        fig2 = plt.figure()
+        fig3 = plt.figure()
     pdf_obj = PdfPages(Path(staging_dir).joinpath(Path('session_plots.pdf')))
     pdf_obj.savefig(fig) 
     pdf_obj.savefig(fig2)
