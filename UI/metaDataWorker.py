@@ -10,7 +10,6 @@ from aind_metadata_mapper.bergamo.session import ( BergamoEtl,
                                                   RawImageInfo,
                                                   )
 import bergamo_rig
-from aind_data_schema_models.data_name_patterns import DataLevel
 from typing import Optional
 from aind_codeocean_pipeline_monitor.models import (
     PipelineMonitorSettings,
@@ -22,15 +21,10 @@ from aind_data_transfer_models.core import (
     SubmitJobRequest,
     CodeOceanPipelineMonitorConfigs,
 )
-from aind_metadata_mapper.models import (
-    SessionSettings,
-    JobSettings as GatherMetadataJobSettings,
-)
-from aind_metadata_mapper.bergamo.models import JobSettings as BergamoSessionSettings
 from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
 from codeocean.computation import RunParams, DataAssetsRunParam
-from codeocean.data_asset import DataAssetParams
+
 
 
 import subprocess # FOR ROBOCOPY
@@ -314,21 +308,10 @@ class cloudTransferWorker(QRunnable):
 #         THIS IS WRONG!!!
 #         
 #         ##################################################################
-# =============================================================================
-        
+        #acquisition_datetime = datetime.fromisoformat("2024-10-23T15:30:39")#find correct way to state the acq_datetime
         codeocean_pipeline_id = "a2c94161-7183-46ea-8b70-79b82bb77dc0"
         codeocean_pipeline_mount: Optional[str] = "ophys"
 
-        codeocean_configs = CodeOceanPipelineMonitorConfigs(
-            pipeline_monitor_capsule_settings=[
-                PipelineMonitorSettings(
-                    run_params=RunParams(
-                        pipeline_id=codeocean_pipeline_id,
-                        data_assets=[DataAssetsRunParam(id="", mount=codeocean_pipeline_mount)],
-                    ),
-                )
-            ],
-        )
         #adding codeocean capsule ID and mount
         pophys_config = ModalityConfigs(
             modality=Modality.POPHYS,
@@ -350,7 +333,7 @@ class cloudTransferWorker(QRunnable):
             subject_id=subject_id,
             acq_datetime= datetime.strptime(self.params['sessionStart'], "%Y-%m-%dT%H:%M:%S.%f%z").strftime("%Y-%m-%d %H:%M:%S"),
             modalities=[pophys_config, behavior_config, behavior_video_config],
-            metadata_dir=PurePosixPath(metaDataDir),
+            metadata_dir=PurePosixPath(f"/allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}"),
             process_capsule_id=codeocean_pipeline_id,
             project_name=project_name,
             input_data_mount=codeocean_pipeline_mount,

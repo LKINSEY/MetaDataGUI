@@ -1,38 +1,43 @@
 # from main_utility import *
 #%%
-from PyQt6.QtGui import QPixmap
 import numpy as np
-import sys, zmq, os, subprocess, queue, json, shutil, traceback
+import sys, os, json, traceback
 from glob import glob
 from pathlib import Path
 from datetime import datetime, date
-from PyQt6.QtWidgets import  QScrollArea, QListWidget, QMenuBar, QTabWidget, QCheckBox, QPushButton, QComboBox, QLineEdit, QHBoxLayout, QLabel, QErrorMessage, QApplication, QMenuBar, QMenu, QMainWindow, QTextEdit, QPushButton, QVBoxLayout, QWidget, QGroupBox, QInputDialog, QFileDialog
-from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal, QThreadPool
-from PyQt6.QtGui import QIntValidator, QAction, QImage, QPixmap, QColor, QPalette
-from PyQt6.QtWidgets import  QMenuBar, QLineEdit, QHBoxLayout, QLabel, QErrorMessage, QApplication, QMenuBar, QMenu, QMainWindow, QTextEdit, QPushButton, QVBoxLayout, QWidget, QGroupBox, QInputDialog, QFileDialog
-import pandas as pd
+from PyQt6.QtWidgets import (
+    QListWidget, 
+    QCheckBox, 
+    QPushButton, 
+    QComboBox,  
+    QHBoxLayout, 
+    QLabel, 
+    QErrorMessage, 
+    QApplication, 
+    QMainWindow, 
+    QTextEdit, 
+    QVBoxLayout, 
+    QWidget, 
+    QGroupBox
+)
+from PyQt6.QtCore import (
+    Qt, 
+    pyqtSignal, 
+    QThreadPool
+)
+from PyQt6.QtGui import (
+    QImage, 
+    QPixmap, 
+    QColor
+)
 from datetime import datetime, date
-import matplotlib.pyplot as plt
-
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import fitz #PyMuPDF
-#comment out for testing
-from aind_metadata_mapper.bergamo.session import ( BergamoEtl, 
-                                                  JobSettings,
-                                                  RawImageInfo,
-                                                  )
-import bergamo_rig
 from main_utility import *
 from metaDataWorker import WorkerSignals, metaDataWorker, transferToScratchWorker, cloudTransferWorker
 
 today = str(date.today())
 print('Running Data Viewer on:', today)
 dataDir = 'Y:/' #setting to scratch save location
-# dataDir = 'F:/Staging'
-# dataDir = 'F:/BCI
-# dataDir = 'Z:/ophys/Lucas/BCI_upload_GUI/exampleData'
-
-
 
 #Creating a seperate class that can help user verify what boxes are valid by just clicking on them
 class userValidatableTextEdit(QTextEdit):
@@ -101,8 +106,6 @@ class BergamoDataViewer(QMainWindow):
         mainLayout = QVBoxLayout()
         centralWidget.setLayout(mainLayout)
         
-
-        
         #######################################################
         ############## App Heading Stuff ######################
         #######################################################
@@ -130,8 +133,6 @@ class BergamoDataViewer(QMainWindow):
         self.mouseNameDropDown.setCurrentIndex(0)
         self.mouseNameDropDown.currentIndexChanged.connect(self.selectionChanged)
         
-        self.newMouseCheck = QCheckBox('Check this if entering info for new mouse')
-        self.newMouseCheck.stateChanged.connect(self.highlightTextBoxes)
         
 
         #######################################################
@@ -341,32 +342,7 @@ class BergamoDataViewer(QMainWindow):
             else:
                 print('Mouse not specified!')
 
-        
-    def highlightTextBoxes(self):
-        #we want to make all of the text boxes green until a user clicks in them, puts text there, then clicks out
-        #this function will also activate when a new mouse is selected from drop down so that a user
-        #verifies that each item in each text box is correct
-        isCheckedFlag = self.newMouseCheck.isChecked()
-        if isCheckedFlag:
-            self.WRName.setColorToGreen()               #setStyleSheet(f'background-color: {textEditColor.name()}')
-            self.mouseID.setColorToGreen()              #setStyleSheet(f'background-color: {textEditColor.name()}')
-            self.imageWaveLength.setColorToGreen()
-            self.imagingDepth.setColorToGreen()
-            self.experimenterName.setColorToGreen()
-            self.sessionDate.setColorToGreen()
-            self.scratchLoc.setColorToGreen()
-            self.targetStruct.setColorToGreen()
-            self.notes.setColorToGreen()
-        else:
-            self.WRName.setDefaultColor()
-            self.mouseID.setDefaultColor()
-            self.imageWaveLength.setDefaultColor()
-            self.imagingDepth.setDefaultColor()
-            self.experimenterName.setDefaultColor()
-            self.sessionDate.setDefaultColor()
-            self.scratchLoc.setDefaultColor()
-            self.targetStruct.setDefaultColor()
-            self.notes.setDefaultColor()
+
     
     def resetTextEditColor(self, event):
         widget = self.sender()

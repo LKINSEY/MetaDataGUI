@@ -28,6 +28,7 @@ conda create -n codeocean python=3.11
 conda activate codeocean
 pip install codeocean, aind_data_schema_models
 pip install git+https://github.com/AllenNeuralDynamics/aind-data-transfer-service.git
+pip install git+https://github.com/AllenNeuralDynamics/aind-codeocean-pipeline-monitor.git
 ```
 maybe
 #aind_data_transfer_models, aind_data_transfer_service
@@ -71,4 +72,4 @@ map: \\allen\aind\scratch\BCI\2p-raw to Y: drive
 
 
 # Usage
-![image](https://github.com/user-attachments/assets/348a11a1-eaf1-4a7d-ac49-e7906ec96fff)
+COMING SOON
