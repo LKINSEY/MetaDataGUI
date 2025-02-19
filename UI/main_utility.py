@@ -1,49 +1,51 @@
-import os, time
+import os
 from pathlib import Path
 from datetime import datetime
-import pandas as pd
-import os,json, subprocess, shutil
+from typing import List, Tuple
+import os
+import json
+import subprocess
+import shutil
 import numpy as np
-#from aind_data_schema.visualizations import plot_session
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-from matplotlib.dates import DateFormatter
 import matplotlib
+font = {'family' : 'Sans',
+        'size'   : 18}
+matplotlib.rc('font', **font)
 from typing import List, Tuple
 from datetime import datetime
-import bergamo_rig
-from aind_metadata_mapper.bergamo.session import ( BergamoEtl, 
-                                                  JobSettings,
-                                                  RawImageInfo,
-                                                  )
+from PyQt6.QtWidgets import (
+    QTextEdit,
+)
+from PyQt6.QtCore import (
+    Qt, 
+    pyqtSignal
+)
+from PyQt6.QtGui import (
+    QColor, 
+)
 
 
-#utilities
-# =============================================================================
-# def extract_behavior(mouse_name, session_folder,staging_dir):
-#     command = ['export_behavior.bat',  mouse_name, session_folder,staging_dir]
-#     print('-------------- \n Extracting Behavior... \n ------------------')
-#     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, text=True)
-#     print('Sub process is working')
-#     count = 0
-#     while True:
-#         time.sleep(10)
-#         print(f'Still writing after {count}0 seconds...')
-#         count += 1
-#         if len(os.listdir(staging_dir))>0:
-#             print('Behavior Files Created')
-#             break
-#     #     output = process.stdout.readline()
-#     #     if output == '' and process.poll() is not None:
-#     #         break
-#     #     if output:
-#     #         print(output.strip())
-# 
-#     # rc = process.poll()
-#     # return rc
-# =============================================================================
-
-
+class highlightedTextEdit(QTextEdit):
+    tab = pyqtSignal(object)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.default_color = QColor('white')
+        self.clicked_color = QColor('lightblue')
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.setStyleSheet(f'background-color: {self.clicked_color.name()}')
+        super().mousePressEvent(event)
+    def setDefaultColor(self):
+        self.setStyleSheet(f'background-color: {self.default_color.name()}')
+        self.isGreen = False
+    def keyPressEvent(self,event):
+        if event.key() == 16777217:
+            event.accept()
+            self.tab.emit(event)
+        else:
+            super().keyPressEvent(event)
 
 def extract_behavior(mouse_name, session_folder, staging_dir):
     command = ['export_behavior.bat', mouse_name, session_folder, staging_dir]
@@ -59,27 +61,6 @@ def extract_behavior(mouse_name, session_folder, staging_dir):
 
     rc = process.returncode
     return rc
-
-
-
-#METADATA FUNCTIONS
-
-
-import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
-
-import json
-import os
-from typing import List, Tuple
-
-
-from matplotlib.dates import DateFormatter
-# import matplotlib.pyplot as plt
-import matplotlib
-font = {'family' : 'Sans',
-        #'weight' : 'bold',
-        'size'   : 18}
-matplotlib.rc('font', **font)
 
 def load_metadata_from_folder(folder: str, models: List[str] = None) -> dict:
     """Load metadata from a folder containing JSON files."""
@@ -116,13 +97,11 @@ def plot_session(session: dict) -> Tuple[plt.Figure, plt.Axes]:
             else:
                 s_text += sm['abbreviation'] + '\n'
         ax.text(stream_start_time, 1.1, s_text, rotation=90, ha="left", va="bottom")
-    #     ax.scatter(mdates.date2num(stream_start_time), [1], marker='|', color='blue', s=100)
 
     for epoch in session["stimulus_epochs"]:
         stimulus_start_time = datetime.fromisoformat(epoch["stimulus_start_time"]).replace(tzinfo=None)
         stimulus_end_time = datetime.fromisoformat(epoch["stimulus_end_time"]).replace(tzinfo=None)
         ax.hlines(2, mdates.date2num(stimulus_start_time), mdates.date2num(stimulus_end_time), linewidth=8, alpha=0.3)
-        #     ax.scatter(mdates.date2num(stimulus_start_time), [2], marker='|', color='red', s=100)
         ax.text(stimulus_start_time, 2.1, epoch["stimulus_name"]+ '\n' + epoch['output_parameters']['tiff_stem'], rotation=90, ha="center", va="bottom")
 
     ax.xaxis.set_major_locator(mdates.HourLocator())
@@ -136,9 +115,6 @@ def plot_session(session: dict) -> Tuple[plt.Figure, plt.Axes]:
 
     return fig, ax
 
-
-#plot
-
 def plot_behavior(bpod_data,mouse_name,session_date):
     scanimage_file_names = list()
     basenames = list()
@@ -149,7 +125,7 @@ def plot_behavior(bpod_data,mouse_name,session_date):
             continue
         else:
             for file in sfn:
-                if '_' in file:# and ('cell' in file.lower() or 'stim' in file.lower()):
+                if '_' in file:
                     basenames.append(file[:-1*file[::-1].find('_')-1])
                     try:
                         file_indices.append(int(file[-1*file[::-1].find('_'):file.find('.')]))
@@ -229,7 +205,6 @@ def plot_behavior(bpod_data,mouse_name,session_date):
             ax_hit.plot(trial_indices_to_plot,hit_rate,'k-')
         ax_hit.vlines(trials_so_far+.5,0,1,color= 'blue',linestyles = 'dashed')
         ax_time_to_hit.plot(trial_indices_to_plot,time_to_threshold_crossing,'g.')
-        #ax_time_to_hit.plot(trial_indices_to_plot,time_to_lick,'r.')
     ax_time_to_hit.set_yscale('log')
         
     ax_time_to_hit.set_ylabel('')
@@ -263,7 +238,7 @@ def plot_pavlovian(bpod_data,mouse_name,session_date):
             continue
         else:
             for file in sfn:
-                if '_' in file:# and ('cell' in file.lower() or 'stim' in file.lower()):
+                if '_' in file:
                     basenames.append(file[:-1*file[::-1].find('_')-1])
                     try:
                         file_indices.append(int(file[-1*file[::-1].find('_'):file.find('.')]))
@@ -350,11 +325,8 @@ def plot_pavlovian(bpod_data,mouse_name,session_date):
     ax1.set_title('{} - {}'.format(mouse_name,session_date))
     return fig
 
-#Generate JSONS
-
 #Session JSON
 def prepareSessionJSON(behavior_folder_staging, behavior_fname,nobehavior = False):
-    #inputs == behavior_folder_staging, behavior_fname, 
     #define an error message
     is_side_camera_active = False
     is_bottom_camera_active = False
@@ -369,10 +341,9 @@ def prepareSessionJSON(behavior_folder_staging, behavior_fname,nobehavior = Fals
         behavior_data = np.load(os.path.join(behavior_folder_staging,behavior_fname),allow_pickle = True).tolist()
         if 'scanimage_tiff_headers' not in behavior_data.keys():
             print('no scanimage header found in behavior file - redo behavior extraction (cell above)')
-            return # THIS IS AN ERROR, PLEASE HANDLE - behavior extraction must be done again - probably not the best place here
+            return 
         bpod_file_names = np.unique(behavior_data['bpod_file_names'])    
         command_list = []
-        #likely if but, it will be here...
         for f in bpod_file_names:
             shutil.copyfile(f, behavior_folder_staging.joinpath(Path(f).name))
         goodtrials = []
@@ -413,7 +384,7 @@ def prepareSessionJSON(behavior_folder_staging, behavior_fname,nobehavior = Fals
             behavior_task_name = 'Pavlovian conditioning'
         else:
             print('how many CNs??')
-            return # error!!
+            return 
         print(behavior_task_name)
         starting_lickport_position = [ 0,
                                         -1*np.abs(np.median(behavior_data['zaber_reward_zone']-behavior_data['zaber_limit_far'])),
@@ -438,9 +409,6 @@ def stagingVideos(behavior_data, behavior_video_folder_staging):
                     bottom_folders.append(original_movie_basefolder.joinpath(Path(*movie_name.split('/')[5:-1])))
                 else:
                     return 
-                    # err = QErrorMessage(self)
-                    # err.showMessage('No Videos! - Aborting Processing Pipeline -- YAML not made')
-                    # err.exec()
     side_folders = np.unique(side_folders)
     bottom_folders = np.unique(bottom_folders)
     behavior_video_folders = ''
@@ -476,7 +444,7 @@ def stagingVideos(behavior_data, behavior_video_folder_staging):
 def createPDFs(staging_dir, behavior_data, mouseID, date,WRname):
     from matplotlib.backends.backend_pdf import PdfPages
 
-    md = load_metadata_from_folder(staging_dir)#Path(staging_dir).joinpath(Path('session.json'))
+    md = load_metadata_from_folder(staging_dir)
     fig,ax = plot_session(md['session'])
     ax.set_title('{} ({}) -  {}'.format(WRname, mouseID, date))
     md['session']['session_start_time']
