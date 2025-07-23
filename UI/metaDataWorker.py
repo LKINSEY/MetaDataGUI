@@ -1,54 +1,29 @@
-from PyQt6.QtCore import QRunnable, pyqtSignal, QObject, QThreadPool
+from PyQt6.QtCore import QRunnable, pyqtSignal, QObject
 import traceback, os, json, traceback, shutil, requests
 from pathlib import Path, PurePosixPath
 import numpy as np
-import matplotlib.pyplot as plt
-from datetime import datetime, date
+from datetime import datetime
 from glob import glob
 from aind_metadata_mapper.bergamo.session import ( BergamoEtl, 
                                                   JobSettings,
-                                                  RawImageInfo,
                                                   )
 import bergamo_rig
 from typing import Optional
-from aind_codeocean_pipeline_monitor.models import (
-    PipelineMonitorSettings,
-    CaptureSettings,
-)
 from aind_data_transfer_models.core import (
     ModalityConfigs,
     BasicUploadJobConfigs,
     SubmitJobRequest,
-    CodeOceanPipelineMonitorConfigs,
 )
 from aind_data_schema_models.modalities import Modality
 from aind_data_schema_models.platforms import Platform
-from codeocean.computation import RunParams, DataAssetsRunParam
-
-
-
-import subprocess # FOR ROBOCOPY
-
-#from REST API documentation
-# to access these on local device run this command:
-    # pip install git+https://github.com/AllenNeuralDynamics/aind-data-transfer-service.git
-    # pip install git+https://github.com/AllenNeuralDynamics/aind-data-transfer-models.git
-# from aind_data_transfer_service.configs.job_configs import ModalityConfigs, BasicUploadJobConfigs
-# from pathlib import PurePosixPath
-# import json
-# import requests
-# from aind_data_transfer_models.core import ModalityConfigs, BasicUploadJobConfigs, SubmitJobRequest
-# from aind_data_schema_models.modalities import Modality
-# from aind_data_schema_models.platforms import Platform
-######################################################
-
+import subprocess
 from main_utility import *
 
 
 class WorkerSignals(QObject):
-    stepComplete = pyqtSignal(str)      #emits a message to be read out in QListWidget before and afterevery function
-    nextStep = pyqtSignal(str)          #emits same as stepComplete, but will call a diff function to put diff stuff in list widget
-    allComplete = pyqtSignal()          #just a way of app to know everything is done and pdfs can be displayed
+    stepComplete = pyqtSignal(str)      
+    nextStep = pyqtSignal(str)          
+    allComplete = pyqtSignal()          
     transmitData = pyqtSignal(tuple)
     error = pyqtSignal(str)
     
@@ -61,14 +36,6 @@ class metaDataWorker(QRunnable):
         self.mouseDict = {}
     
     def run(self):
-        
-        # #error condition - missing text entery
-        # for key in self.params:
-        #     if not isinstance(self.params.get(key, ''), (list, str)) or len(str(self.params.get(key, '')))<2:
-        #         self.signals.error.emit('Missing Field Name - aborting process')
-        #         return
-
-        #Load Init JSON and mouseDict JSON and establish data paths
         WRname = self.params.get('WRname')
         dateEnteredAs = self.params.get('date')
         try:
@@ -76,25 +43,21 @@ class metaDataWorker(QRunnable):
             dateFileFormat = dateTimeObj.strftime('%m%d%y') #mmddyy]
         except ValueError:
             dateFileFormat = str(dateEnteredAs) #already entered as mmddyy
-        
-        #I want the staging directory to be the scratch location, saved in mouse-->date-->data format, then in the mouse/date/ file, we can have actual behavior data
-        stagingDir = 'Y:/'  #self.params.get('stagingDir') #will contain the init.json and mouseDict.json
-        sessionFolder = Path(self.params.get('pathToRawData') + f'/{WRname}/{dateFileFormat}') #Y:/BCI93/101724
+        stagingDir = 'Y:/' 
+        sessionFolder = Path(self.params.get('pathToRawData') + f'/{WRname}/{dateFileFormat}') #Y:/customName/mmddyy
 
         with open(Path(stagingDir + '/init.json'), 'r') as f:
             self.sessionData = json.load(f)
         with open(Path(stagingDir + '/mouseDict.json'), 'r') as f:
             self.mouseDict = json.load(f)
         
-        self.sessionData['subject_id']                                          = self.params.get('subjectID')
-        self.sessionData['data_streams'][0]['light_sources'][0]['wavelength']   = self.params.get('wavelength')
-        self.sessionData['data_streams'][1]['ophys_fovs'][0]['imaging_depth']   = self.params.get('imagingDepth')
-        self.sessionData['experimenter_full_name'][0]                           = self.params.get('experimenterName')
-        self.sessionData['notes']                                               = self.params.get('notes')
+        self.sessionData['subject_id'] = self.params.get('subjectID')
+        self.sessionData['data_streams'][0]['light_sources'][0]['wavelength'] = self.params.get('wavelength')
+        self.sessionData['data_streams'][1]['ophys_fovs'][0]['imaging_depth'] = self.params.get('imagingDepth')
+        self.sessionData['experimenter_full_name'][0] = self.params.get('experimenterName')
+        self.sessionData['notes'] = self.params.get('notes')
 
-        #### LOGGING PIPELINE ####
-        #Step 1: check if mouse name and id is in dictionary
-        #quick check for a typo
+        #### Logging Pipeline ####
         if '/' in WRname or ' ' in WRname:
             self.signals.error.emit('Error in typing WR Name, either a tab, enter, or space was pressed -- aborting process')
             return
@@ -107,36 +70,29 @@ class metaDataWorker(QRunnable):
                 json.dump(self.mouseDict, f)
         
         #Step 2: check if sessionFolder exists
-
-        stagingMouseSessionPath = f'Y:/{WRname}/{dateFileFormat}/'#turned into scratch location             #Path(stagingDir).joinpath( Path(f'{WRname}_{dateEnteredAs}'))
+        stagingMouseSessionPath = f'Y:/{WRname}/{dateFileFormat}/'
         rawDataPath = f'Y:/{WRname}/{dateFileFormat}/pophys'
 
-        if os.path.exists(sessionFolder):  #~os.path.exists(stagingMouseSessionPath) and os.path.exists(sessionFolder): #check if behavior folders have been processed
-            
-            #Step 3: Make folders for each of the behavior types
-            Path(stagingMouseSessionPath).mkdir(parents=True, exist_ok=True)                                    # makes mouse staging folder F:/staging/mouseWRname_mm-dd-yyyy
+        if os.path.exists(sessionFolder):  
+            Path(stagingMouseSessionPath).mkdir(parents=True, exist_ok=True)                                    
             behavior_folder_staging = Path.joinpath(Path(stagingMouseSessionPath),Path('behavior'))
             behavior_video_folder_staging = Path.joinpath(Path(stagingMouseSessionPath),Path('behavior_video'))
-            Path(behavior_folder_staging).mkdir(parents=True, exist_ok=True)                                    # puts behavior folder in staging folder
-            Path(behavior_video_folder_staging).mkdir(parents=True, exist_ok=True)                              # puts behavior video folder in staging folder
-            #let us know
+            Path(behavior_folder_staging).mkdir(parents=True, exist_ok=True)                                    
+            Path(behavior_video_folder_staging).mkdir(parents=True, exist_ok=True)                              
             self.signals.stepComplete.emit('Staging Folders Created')
 
 
         else:
-            if ~os.path.exists(stagingMouseSessionPath):
+            if not os.path.exists(stagingMouseSessionPath):
                 self.signals.error.emit('Session Folder Specified does not exist -- aborting process')
             else:
                 self.signals.error.emit('Staging Directory not found -- aborting process')
             return
 
         #Step 4: run extract_behavior using raw data found in sessionFolder
-
         try:
             self.signals.nextStep.emit('Extracting Behavior')
-
             rc = extract_behavior(WRname, rawDataPath, behavior_folder_staging)
-
             behavior_fname = f"{Path(sessionFolder).name}-bpod_zaber.npy"
             self.signals.stepComplete.emit('Behavior Data Extracted Successfully')
         except Exception:
@@ -165,28 +121,28 @@ class metaDataWorker(QRunnable):
             except:
                 print('no-learning session?')
                 behavior_data, hittrials, goodtrials, behavior_task_name, is_side_camera_active, is_bottom_camera_active,starting_lickport_position = prepareSessionJSON(behavior_folder_staging, behavior_fname,nobehavior=True)# there is probably no behavior
-            user_settings = JobSettings(    input_source                = Path(scratchInput), #date folder local i.e. Y:/BCI93/101724/pophys
-                                            output_directory            = Path(stagingMouseSessionPath), #staging dir folder scratch  i.e. Y:/BCI93/101724
-                                            experimenter_full_name      = [str(self.sessionData['experimenter_full_name'][0])],
-                                            subject_id                  = str(int(self.sessionData['subject_id'])),
-                                            imaging_laser_wavelength    = int(self.sessionData['data_streams'][0]['light_sources'][0]['wavelength']),
-                                            fov_imaging_depth           = int(self.sessionData['data_streams'][1]['ophys_fovs'][0]['imaging_depth']),
-                                            fov_targeted_structure      = self.params.get('targetedStructure'), 
-                                            notes                       = str(self.sessionData['notes']),
-                                            session_type                = "BCI",
-                                            iacuc_protocol              = "2109",
-                                            rig_id                      = "442_Bergamo_2p_photostim",
-                                            behavior_camera_names       = np.asarray(["Side Face Camera","Bottom Face Camera"])[np.asarray([is_side_camera_active,is_bottom_camera_active])].tolist(),
-                                            imaging_laser_name          = "Chameleon Laser",
-                                            photostim_laser_name        = "Monaco Laser",
-                                            photostim_laser_wavelength  =  1035,
-                                            starting_lickport_position  = starting_lickport_position,
-                                            behavior_task_name          = behavior_task_name,
-                                            hit_rate_trials_0_10        = np.nanmean(hittrials[goodtrials][:10]),
-                                            hit_rate_trials_20_40       = np.nanmean(hittrials[goodtrials][20:40]),
-                                            total_hits                  = sum(hittrials[goodtrials]),
-                                            average_hit_rate            = sum(hittrials[goodtrials])/sum(goodtrials),
-                                            trial_num                   = sum(goodtrials))
+            user_settings = JobSettings(    input_source = Path(scratchInput), #date folder local i.e. Y:/BCI93/101724/pophys
+                                            output_directory = Path(stagingMouseSessionPath), #staging dir folder scratch  i.e. Y:/BCI93/101724
+                                            experimenter_full_name = [str(self.sessionData['experimenter_full_name'][0])],
+                                            subject_id  = str(int(self.sessionData['subject_id'])),
+                                            imaging_laser_wavelength = int(self.sessionData['data_streams'][0]['light_sources'][0]['wavelength']),
+                                            fov_imaging_depth = int(self.sessionData['data_streams'][1]['ophys_fovs'][0]['imaging_depth']),
+                                            fov_targeted_structure = self.params.get('targetedStructure'), 
+                                            notes = str(self.sessionData['notes']),
+                                            session_type = "BCI",
+                                            iacuc_protocol = "2109",
+                                            rig_id = "442_Bergamo_2p_photostim",
+                                            behavior_camera_names = np.asarray(["Side Face Camera","Bottom Face Camera"])[np.asarray([is_side_camera_active,is_bottom_camera_active])].tolist(),
+                                            imaging_laser_name = "Chameleon Laser",
+                                            photostim_laser_name  = "Monaco Laser",
+                                            photostim_laser_wavelength =  1035,
+                                            starting_lickport_position = starting_lickport_position,
+                                            behavior_task_name = behavior_task_name,
+                                            hit_rate_trials_0_10 = np.nanmean(hittrials[goodtrials][:10]),
+                                            hit_rate_trials_20_40 = np.nanmean(hittrials[goodtrials][20:40]),
+                                            total_hits  = sum(hittrials[goodtrials]),
+                                            average_hit_rate = sum(hittrials[goodtrials])/sum(goodtrials),
+                                            trial_num = sum(goodtrials))
             etl_job = BergamoEtl(job_settings=user_settings,)
             session_metadata = etl_job.run_job()
             self.signals.stepComplete.emit('Session JSON Created Successfully!')
@@ -194,6 +150,7 @@ class metaDataWorker(QRunnable):
             self.signals.error.emit('Error generating session json -- check traceback -- aborting process')
             traceback.print_exc() 
             return
+        
         #Step 7: Stage Videos
         try:
             self.signals.nextStep.emit('Staging Videos')
@@ -203,6 +160,7 @@ class metaDataWorker(QRunnable):
             self.signals.error.emit('Error Staging Videos -- check traceback -- aborting process')
             traceback.print_exc() 
             pass
+        
         #Step 8: Create and display PDFs
         try:
             self.signals.nextStep.emit('Making PDFs')
@@ -234,9 +192,9 @@ class transferToScratchWorker(QRunnable):
         dateEnteredAs = self.params.get('date')
         try:
             dateTimeObj = datetime.strptime(dateEnteredAs,'%Y-%m-%d').date()
-            dateFileFormat = dateTimeObj.strftime('%m%d%y') #mmddyy]
+            dateFileFormat = dateTimeObj.strftime('%m%d%y') #mmddyy
         except ValueError:
-            dateFileFormat = str(dateEnteredAs) #already entered as mmddyy
+            dateFileFormat = str(dateEnteredAs) 
         sourceDir = localPath+f'/{thisMouse}/{dateFileFormat}'
         destinationDir = scratchPath+f'/{thisMouse}/{dateFileFormat}/pophys'
         self.signals.nextStep.emit('Copying Raw Data To Scratch - Transfer Worker')
@@ -246,19 +204,20 @@ class transferToScratchWorker(QRunnable):
             
             
             finishTime = datetime.now()
-            deltaT = (finishTime - startTime)#.strftime('%H:%M:%S.%f')
+            deltaT = (finishTime - startTime)
             self.signals.nextStep.emit('Data Successfully copied to scratch')
             self.signals.nextStep.emit(f'This took: {deltaT}')
         else:
             self.signals.nextStep.emit('Data Already Exists on Scratch')
             finishTime = datetime.now()
-            deltaT = (finishTime - startTime)#.strftime('%H:%M:%S.%f')
+            deltaT = (finishTime - startTime)
             self.signals.nextStep.emit(f'This took: {deltaT}')
         self.signals.nextStep.emit('robocopy check')
         try:
             options = "/MIR /FFT /Z /R:5 /W:1 /NDL /NFL"
             robocopy_command = f"robocopy {sourceDir} {destinationDir} {options}"
             result = subprocess.run(robocopy_command, shell=True, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            
             # Check the return code
             if result.returncode == 0:
                 self.signals.nextStep.emit("No files were copied (source and destination are identical).")
@@ -288,27 +247,13 @@ class cloudTransferWorker(QRunnable):
         thisMouse = self.params.get('WRname')
         dateEnteredAs = self.params.get('date')
         subject_id = self.params['subjectID']
-        service_url = "http://aind-data-transfer-service/api/v1/submit_jobs" # For testing purposes, use dev url
+        service_url = "http://aind-data-transfer-service/api/v1/submit_jobs" # For testing purposes, use http://aind-data-transfer-service-dev/api/v1/submit_jobs
         project_name = "Brain Computer Interface"
         s3_bucket = "private"
         platform = Platform.SINGLE_PLANE_OPHYS
-        metaDataDir = f"//allen/aind/scratch/BCI/2p-raw/{thisMouse}/{dateEnteredAs}"
         print(self.params['sessionStart'])
-# =============================================================================
-#         ### for getting the correct datetime ###########################
-#         
-#         THIS IS WRONG!!!
-#         
-#         
-#         aq_times = [os.path.getmtime(acqFile) for acqFile in glob(metaDataDir+'/pophys/*')]## THISIS VERY WROOONG!!!
-#         sorted_aq_times = np.sort(aq_times)
-#         iso_acq_time = datetime.fromtimestamp(sorted_aq_times[-1]).isoformat()
-#         acquisition_datetime = datetime.fromisoformat(iso_acq_time)
-#         
-#         THIS IS WRONG!!!
-#         
-#         ##################################################################
-        #acquisition_datetime = datetime.fromisoformat("2024-10-23T15:30:39")#find correct way to state the acq_datetime
+
+        #acquisition_datetime = datetime.fromisoformat("2024-10-23T15:30:39") #find correct way to state the acq_datetime
         codeocean_pipeline_id = "a2c94161-7183-46ea-8b70-79b82bb77dc0"
         codeocean_pipeline_mount: Optional[str] = "ophys"
 
@@ -343,6 +288,7 @@ class cloudTransferWorker(QRunnable):
         upload_jobs = [upload_job_configs]
         submit_request = SubmitJobRequest(upload_jobs=upload_jobs)
         post_request_content = json.loads(submit_request.model_dump_json(exclude_none=True))
+        
         #Submit request
         submit_job_response = requests.post(url=service_url, json=post_request_content)
         print(submit_job_response.status_code)

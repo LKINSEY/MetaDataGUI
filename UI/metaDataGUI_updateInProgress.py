@@ -1,4 +1,3 @@
-# from main_utility import *
 #%%
 import numpy as np
 import sys, os, json, traceback
@@ -7,7 +6,6 @@ from pathlib import Path
 from datetime import datetime, date
 from PyQt6.QtWidgets import (
     QListWidget, 
-    QCheckBox, 
     QPushButton, 
     QComboBox,  
     QHBoxLayout, 
@@ -22,67 +20,36 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import (
     Qt, 
-    pyqtSignal, 
     QThreadPool
 )
 from PyQt6.QtGui import (
     QImage, 
     QPixmap, 
-    QColor
 )
 from datetime import datetime, date
 import fitz #PyMuPDF
 from main_utility import *
-from metaDataWorker import WorkerSignals, metaDataWorker, transferToScratchWorker, cloudTransferWorker
+from metaDataWorker import (
+    WorkerSignals, 
+    metaDataWorker, 
+    transferToScratchWorker, 
+    cloudTransferWorker
+)
 
 today = str(date.today())
 print('Running Data Viewer on:', today)
-dataDir = 'Y:/' #setting to scratch save location
-
-#Creating a seperate class that can help user verify what boxes are valid by just clicking on them
-class userValidatableTextEdit(QTextEdit):
-    tab = pyqtSignal(object)
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.default_color = QColor('white')
-        self.clicked_color = QColor('lightblue')
-        self.isGreen = False
-        
-    def mousePressEvent(self, event):
-        if event.button() == Qt.MouseButton.LeftButton:
-            if self.isGreen:
-                self.setStyleSheet(f'background-color: {self.default_color.name()}')
-            else:
-                self.setStyleSheet(f'background-color: {self.clicked_color.name()}')
-        super().mousePressEvent(event)
-    def setDefaultColor(self):
-        self.setStyleSheet(f'background-color: {self.default_color.name()}')
-        self.isGreen = False
-    def resetColor(self):
-        if not self.isGreen:
-            self.setStyleSheet(f'background-color: {self.default_color.name()}')
-    def setColorToGreen(self):
-        self.setStyleSheet('background-color: green')
-        self.isGreen=True
-    def keyPressEvent(self,event):
-        if event.key() == 16777217:
-            event.accept()
-            self.tab.emit(event)
-        else:
-            super().keyPressEvent(event)
-        
-
-
+dataDir = 'Y:/' 
+h = 65      #height of text boxes
+     
 
 class BergamoDataViewer(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('Data Viewer')
         self.showMaximized()
-        #Define Init Variables
         self.paramDict = {}
-        self.miceAvailable = glob('Y:/*') 
-        self.listOfMice = os.listdir('Y:/')
+        self.miceAvailable = glob(dataDir+'*') 
+        self.listOfMice = os.listdir(dataDir)
         self.selectedPaths=None
         self.datesToLook= []
         self.datesDropDownActive = False
@@ -94,29 +61,15 @@ class BergamoDataViewer(QMainWindow):
         self.initUI()
 
     def initUI(self):
-        
-        #fixed height for entry boxes
-        h = 65
-        
-        #Setting Central Widget
+
         centralWidget = QWidget()
         self.setCentralWidget(centralWidget)
-        
-        #defining the background layout everything will be put in vertically
         mainLayout = QVBoxLayout()
         centralWidget.setLayout(mainLayout)
-        
-        #######################################################
-        ############## App Heading Stuff ######################
-        #######################################################
-        
-        
-        #Exit button at top of window, makes it easier to close everything appropriately
         exit_button = QPushButton('Exit')
         exit_button.clicked.connect(self.close)
         mainLayout.addWidget(exit_button)
         
-        #Defining the Mouse Drop Down in a more readable way
         self.mouseNameDropDown =  QComboBox(self)
         mice = []
         for file in self.miceAvailable:
@@ -126,20 +79,19 @@ class BergamoDataViewer(QMainWindow):
                     mice.append('_'.join(mouseWRname.split('_')[:-1]))
                 else:
                     mice.append(mouseWRname.split('_')[0])
+        
+
         uniqueMice = np.unique(mice)
         print(uniqueMice)
         for mouse in uniqueMice:
             self.mouseNameDropDown.addItem(f'{mouse}')
         self.mouseNameDropDown.setCurrentIndex(0)
         self.mouseNameDropDown.currentIndexChanged.connect(self.selectionChanged)
-        
-        
 
         #######################################################
-        ############## Entry Info Here ########################
+        ############## Text Boxes #############################
         #######################################################
-        
-        #If Entering a new mouse, just enter ID here first 
+
         self.mouseEntryLabel = QGroupBox('Mouse Info')
         self.mouseEntryLabel.setFixedHeight(450)
         
@@ -160,17 +112,16 @@ class BergamoDataViewer(QMainWindow):
         self.mouseEntryLabel.setLayout(self.mainMouseEntryLayout)
         
         #Layer 1
+        self.WRName = highlightedTextEdit()                 
+        self.WRName.tab.connect(self.tabToSwitch)               
+        self.WRNameLabel = QGroupBox('Mouse WR Name')           
+        self.WRNameLabel.setFixedHeight(h)                      
+        self.WRNameLayout = QVBoxLayout()                       
+        self.WRNameLayout.addWidget(self.WRName)                
+        self.WRNameLabel.setLayout(self.WRNameLayout)           
+        self.mouseEntryLayout_layer1.addWidget(self.WRNameLabel)
         
-        self.WRName = userValidatableTextEdit()                 #Define Edit
-        self.WRName.tab.connect(self.tabToSwitch)               #Define tab event
-        self.WRNameLabel = QGroupBox('Mouse WR Name')           #Define Label
-        self.WRNameLabel.setFixedHeight(h)                      #Set Height
-        self.WRNameLayout = QVBoxLayout()                       #Define Layout
-        self.WRNameLayout.addWidget(self.WRName)                #Edit into Layout
-        self.WRNameLabel.setLayout(self.WRNameLayout)           #Layout into Box
-        self.mouseEntryLayout_layer1.addWidget(self.WRNameLabel)#Box into layer of layout
-        
-        self.mouseID = userValidatableTextEdit() 
+        self.mouseID = highlightedTextEdit() 
         self.mouseIDLabel = QGroupBox('Mouse ID')
         self.mouseIDLabel.setFixedHeight(h)
         self.mouseIDLayout = QVBoxLayout()
@@ -179,7 +130,7 @@ class BergamoDataViewer(QMainWindow):
         self.mouseEntryLayout_layer1.addWidget(self.mouseIDLabel)
         
         #Layer 2
-        self.imageWaveLength = userValidatableTextEdit() 
+        self.imageWaveLength = highlightedTextEdit() 
         self.imageWaveLengthLabel = QGroupBox('Imaging Wavelength')
         self.imageWaveLengthLabel.setFixedHeight(h)
         self.imageWaveLengthLayout = QVBoxLayout()
@@ -187,7 +138,7 @@ class BergamoDataViewer(QMainWindow):
         self.imageWaveLengthLabel.setLayout(self.imageWaveLengthLayout)
         self.mouseEntryLayout_layer2.addWidget(self.imageWaveLengthLabel)
         
-        self.imagingDepth = userValidatableTextEdit()
+        self.imagingDepth = highlightedTextEdit()
         self.imagingDepthLabel = QGroupBox('Imaging Depth')
         self.imagingDepthLabel.setFixedHeight(h)
         self.imagingDepthLayout = QVBoxLayout()
@@ -195,7 +146,7 @@ class BergamoDataViewer(QMainWindow):
         self.imagingDepthLabel.setLayout(self.imagingDepthLayout)
         self.mouseEntryLayout_layer2.addWidget(self.imagingDepthLabel)
         
-        self.experimenterName = userValidatableTextEdit()
+        self.experimenterName = highlightedTextEdit()
         self.experimenterNameLabel = QGroupBox('Experimenter Name')
         self.experimenterNameLabel.setFixedHeight(h)
         self.experimenterNameLayout = QVBoxLayout()
@@ -203,7 +154,7 @@ class BergamoDataViewer(QMainWindow):
         self.experimenterNameLabel.setLayout(self.experimenterNameLayout)
         self.mouseEntryLayout_layer2.addWidget(self.experimenterNameLabel)
         
-        self.sessionDate = userValidatableTextEdit()
+        self.sessionDate = highlightedTextEdit()
         self.sessionDate.setPlainText(today)
         self.sessionDateLabel = QGroupBox('Date of Session')
         self.sessionDateLabel.setFixedHeight(h)
@@ -212,17 +163,7 @@ class BergamoDataViewer(QMainWindow):
         self.sessionDateLabel.setLayout(self.sessionDateLayout)
         self.mouseEntryLayout_layer2.addWidget(self.sessionDateLabel)
         
-        #Layer 3
-        # self.scratchLoc = userValidatableTextEdit()
-        # self.scratchLoc.setPlainText('//allen/aind/scratch/2p-working-group/data-uploads')
-        # self.scratchLocLabel = QGroupBox('Scratch Save Location')
-        # self.scratchLocLabel.setFixedHeight(h)
-        # self.scratchLocLayout = QVBoxLayout()
-        # self.scratchLocLayout.addWidget(self.scratchLoc)
-        # self.scratchLocLabel.setLayout(self.scratchLocLayout)
-        # self.mouseEntryLayout_layer3.addWidget(self.scratchLocLabel)
-        
-        self.targetStruct = userValidatableTextEdit()
+        self.targetStruct = highlightedTextEdit()
         self.targetStruct.setPlainText('Primary Motor Cortex')
         self.targetStructLabel = QGroupBox('Targeted Brain Structure')
         self.targetStructLabel.setFixedHeight(h)
@@ -232,7 +173,7 @@ class BergamoDataViewer(QMainWindow):
         self.mouseEntryLayout_layer3.addWidget(self.targetStructLabel)
     
         #Layer 4
-        self.notes = userValidatableTextEdit()
+        self.notes = highlightedTextEdit()
         self.notesLabel = QGroupBox('Session Notes')
         self.notesLabel.setFixedHeight(75)
         self.notesLayout = QVBoxLayout()
@@ -240,14 +181,13 @@ class BergamoDataViewer(QMainWindow):
         self.notesLabel.setLayout(self.notesLayout)
         self.mouseEntryLayout_layer4.addWidget(self.notesLabel)
 
+        #######################################################
+        ##############  Buttons ###############################
+        #######################################################
 
-        #putting a "transfer local data to scratch" button here
         self.transferDataToScratchButton = QPushButton('Transfer Data To Scratch')
         self.mainMouseEntryLayout.addWidget(self.transferDataToScratchButton)
         self.transferDataToScratchButton.clicked.connect(self.copyToScratch)
-        
-        
-        #Process Data Button goes after data is entered
         self.processDataButton = QPushButton('Process Data')
         self.mainMouseEntryLayout.addWidget(self.processDataButton)
         self.processDataButton.clicked.connect(self.initiatePipeline)
@@ -287,20 +227,19 @@ class BergamoDataViewer(QMainWindow):
         self.plotVisualizationLayout.addLayout(self.pageSelectionUI)   #page selection layer
         self.plotVisualizationLayout.addWidget(self.pdfLoc)
         self.plotVisualizationLayout.addWidget(self.sendToCloudButton)
+        
         #######################################################
         ##############  Organize Layout #######################
         #######################################################
-        
-        #Define the order things are placed
-        #Main Layout --> QVBoxLayout
+
         mainLayout.addWidget(exit_button)
         mainLayout.addWidget(self.mouseNameDropDown)
+
        # mainLayout.addWidget(self.newMouseCheck)
+
         mainLayout.addWidget(self.mouseEntryLabel)
         mainLayout.addWidget(self.plotVisualizationLabel)
-        
         self.textEdits = [
-            #order at which tabs rotate through text edits
             self.WRName,
             self.mouseID,
             self.imageWaveLength,
@@ -310,13 +249,11 @@ class BergamoDataViewer(QMainWindow):
             self.targetStruct,
             self.notes
         ]
-
         self.show()
     
         #######################################################
         ##############  FUN-ctions ############################
         #######################################################
-        
 
     def tabToSwitch(self, event):
         thisMouse = self.WRName.toPlainText()
@@ -343,15 +280,12 @@ class BergamoDataViewer(QMainWindow):
                 print('Mouse not specified!')
 
 
-    
     def resetTextEditColor(self, event):
         widget = self.sender()
-        if isinstance(widget, userValidatableTextEdit):
+        if isinstance(widget, highlightedTextEdit):
             widget.set_default_color()
         super(QTextEdit, self).focusOutEvent(event)
 
-
-    
     def matchIDFunc(self):
         mouseDictPath = dataDir+'/mouseDict.json'
         with open(mouseDictPath, 'r') as f:
@@ -363,6 +297,7 @@ class BergamoDataViewer(QMainWindow):
             err = QErrorMessage(self)
             err.showMessage('This is a new mouse! Enter ID and Process First Data')
             err.exec()
+
     def copyToScratch(self):
         self.paramDict['subjectID']         = int(self.mouseID.toPlainText())
         self.paramDict['WRname']            = self.WRName.toPlainText()  
@@ -374,20 +309,18 @@ class BergamoDataViewer(QMainWindow):
         self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
         self.paramDict['pathToRawData']     = dataDir #'Y:/'
         self.paramDict['localPath']         = 'F:/BCI/'
-        
-        #set up signals
+
         signals = WorkerSignals()
         signals.nextStep.connect(self.onNextStep)
         signals.stepComplete.connect(self.onStepComplete)
         signals.allComplete.connect(self.onFullCompletion)
         signals.transmitData.connect(self.onDataTransmission)
         signals.error.connect(self.onError)
-        
         self.threadingPool.start(transferToScratchWorker(signals, self.paramDict))
         
     def initiatePipeline(self):
         print('INITIATING PIPELINE HERE ------------------------------------')
-        #load textboxes into dictionary to give to worker
+
         self.paramDict['subjectID']         = int(self.mouseID.toPlainText())
         self.paramDict['WRname']            = self.WRName.toPlainText()  
         self.paramDict['wavelength']        = int(self.imageWaveLength.toPlainText())
@@ -399,7 +332,6 @@ class BergamoDataViewer(QMainWindow):
         self.paramDict['pathToRawData']     = dataDir #'Y:/'
         self.paramDict['localPath']         = 'F:/BCI/'
 
-        #set up signals
         signals = WorkerSignals()
         signals.nextStep.connect(self.onNextStep)
         signals.stepComplete.connect(self.onStepComplete)
@@ -407,19 +339,20 @@ class BergamoDataViewer(QMainWindow):
         signals.transmitData.connect(self.onDataTransmission)
         signals.error.connect(self.onError)
 
-        #send off worker to do its thing
         self.threadingPool.start(metaDataWorker(signals, self.paramDict))
 
-    #Worker Functions
     def onNextStep(self, message):
         self.statusList.addItem(message)
         self.statusList.scrollToBottom()
+
     def onStepComplete(self, message):
         self.statusList.addItem(message)
         self.statusList.scrollToBottom()
+
     def onFullCompletion(self, message):
         self.statusList.addItem(message)
         self.statusList.scrollToBottom()
+
     def onError(self, message):
         self.statusList.addItem(message)
         self.statusList.scrollToBottom()
@@ -436,17 +369,11 @@ class BergamoDataViewer(QMainWindow):
         if index != -1:
             self.statusList.addItem(f'Showing PDFs for {mouse}')
             self.mouseDateDropdown.setCurrentIndex(index)
-    
-    #Back to app functions
 
     def sendToCloud(self):
-        # import yaml
-        
-        #changing this path to be scratch instead of F:/Staging
         self.dataPathEntry = f"Y:/{self.WRName.toPlainText()}/{self.sessionDate.toPlainText()}"
         with open(self.dataPathEntry + '/session.json', 'r') as f:
           sessionParams = json.load(f)
-        print(sessionParams['session_start_time'])
         
         try:
             self.paramDict['subjectID']         = str(self.mouseID.toPlainText())
@@ -457,19 +384,17 @@ class BergamoDataViewer(QMainWindow):
             self.paramDict['notes']             = self.notes.toPlainText()
             self.paramDict['date']              = self.sessionDate.toPlainText()
             self.paramDict['targetedStructure'] = self.targetStruct.toPlainText()
-            self.paramDict['pathToRawData']     = dataDir #'Y:/'
+            self.paramDict['pathToRawData']     = dataDir 
             self.paramDict['localPath']         = 'F:/BCI/'
             self.paramDict['sessionStart'] = sessionParams['session_start_time']
-            
-            #set up signals
+
             signals = WorkerSignals()
             signals.nextStep.connect(self.onNextStep)
             signals.stepComplete.connect(self.onStepComplete)
             signals.allComplete.connect(self.onFullCompletion)
             signals.transmitData.connect(self.onDataTransmission)
             signals.error.connect(self.onError)
-            
-            #send off worker to do its thing
+
             self.threadingPool.start(cloudTransferWorker(signals, self.paramDict))
             
             
@@ -492,7 +417,7 @@ class BergamoDataViewer(QMainWindow):
                 else:
                     mice.append(mouseWRname.split('_')[0])
         uniqueMice = np.unique(mice)
-        try: # if we have a mouse selected already, go back to it!
+        try:
             currentindex = np.where(self.WRName.toPlainText()==uniqueMice)[0][0]
         except:
             currentindex  = 0        
@@ -505,16 +430,13 @@ class BergamoDataViewer(QMainWindow):
         self.datesDropDownActive = True
         self.selectedMouse = self.mouseNameDropDown.currentText()
         self.WRName.setPlainText(self.selectedMouse)
-        # self.selectedPaths = glob(f'Y:/{self.selectedMouse}/*2*')
         self.selectedPaths = []
         for date in os.listdir(f'Y:/{self.selectedMouse}/'):
             try: 
                 self.selectedPaths.append(  datetime.strptime(date, '%m%d%y')) #put dates in datetime format
             except Exception:
-                #ignore improperly logged data
                 pass
-        self.datesToLook = [date.strftime('%m%d%y') for date in sorted(self.selectedPaths, reverse=True)] #sort dates and only return valid dates in order 
-        # self.datesToLook = [(file.split('\\')[-1]).split('_')[-1] for file in self.selectedPaths]
+        self.datesToLook = [date.strftime('%m%d%y') for date in sorted(self.selectedPaths, reverse=True)]
         self.updateDatesDropdown()
         self.WRName.setPlainText(self.selectedMouse)
     
@@ -548,18 +470,15 @@ class BergamoDataViewer(QMainWindow):
         self.loadPDF()
 
     def loadPDF(self):
-        #default to page 3 for ease of use
         sessionData_focus = self.mouseDateDropdown.currentText()
         if len(self.WRName.toPlainText()) >1 and len(self.mouseDateDropdown.currentText()) >1:
-            #Set Date Field as Date of Session Looking at
             self.sessionDate.setPlainText(sessionData_focus)               
-            fullPath = Path('Y:/').joinpath(f'{self.WRName.toPlainText()}/{sessionData_focus}') # 'Y:/path to PDF
+            fullPath = Path('Y:/').joinpath(f'{self.WRName.toPlainText()}/{sessionData_focus}')
             print(fullPath)
             if self.selectedMouse !=  '-':
               try:
                 with open(fullPath.joinpath('session.json'), 'r') as f:
                     self.sessionJSON = json.load(f)
-                #update the other text fields appropriately
                 self.mouseID.setPlainText(str(self.sessionJSON['subject_id'])),
                 self.imageWaveLength.setPlainText(str(self.sessionJSON['data_streams'][0]['light_sources'][0]['wavelength'])),
                 self.imagingDepth.setPlainText(str(self.sessionJSON['data_streams'][1]['ophys_fovs'][0]['imaging_depth'])),
@@ -590,17 +509,7 @@ class BergamoDataViewer(QMainWindow):
               except Exception as e:
                   pass
 
-
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     mainApp = BergamoDataViewer()
-    # mainApp.showMax()
     sys.exit(app.exec())
