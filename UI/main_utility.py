@@ -427,7 +427,9 @@ def stagingVideos(behavior_data, behavior_video_folder_staging):
     original_movie_basefolder = Path('//10.128.54.109/Data/Behavior_videos')
     side_folders = []
     bottom_folders = []
-    
+    if type(behavior_data) == type(None):
+        print('no behavior, no movies')
+        return
     for m in behavior_data['behavior_movie_name_list']:
         if type(m) == np.ndarray or type(m) == list:
             for movie_name in m:
@@ -461,15 +463,17 @@ def stagingVideos(behavior_data, behavior_video_folder_staging):
             behavior_video_folders = str(behavior_video_folder_staging )
     mpeg_files_side = []
     mpeg_files_bottom = []
-    for behavior_video_folder in os.listdir(behavior_video_folders):
-        behavior_video_folder = os.path.join(behavior_video_folders,behavior_video_folder)
-        for behavior_video_subfolder in os.listdir(behavior_video_folder):
-            for file in os.listdir(Path(behavior_video_folder).joinpath(Path(behavior_video_subfolder))):
-                if '.mp4' in file:
-                    if 'bottom' in behavior_video_folder:
-                        mpeg_files_bottom.append(file)
-                    elif 'side' in behavior_video_folder:
-                        mpeg_files_side.append(file)
+    if len(behavior_video_folders)>0:
+    
+        for behavior_video_folder in os.listdir(behavior_video_folders):
+            behavior_video_folder = os.path.join(behavior_video_folders,behavior_video_folder)
+            for behavior_video_subfolder in os.listdir(behavior_video_folder):
+                for file in os.listdir(Path(behavior_video_folder).joinpath(Path(behavior_video_subfolder))):
+                    if '.mp4' in file:
+                        if 'bottom' in behavior_video_folder:
+                            mpeg_files_bottom.append(file)
+                        elif 'side' in behavior_video_folder:
+                            mpeg_files_side.append(file)
     print('{} side camera videos and {} bottom camera videos staged'.format(len(mpeg_files_side),len(mpeg_files_bottom)))
 
 

@@ -295,7 +295,7 @@ class BergamoDataViewer(QMainWindow):
         #Main Layout --> QVBoxLayout
         mainLayout.addWidget(exit_button)
         mainLayout.addWidget(self.mouseNameDropDown)
-        mainLayout.addWidget(self.newMouseCheck)
+       # mainLayout.addWidget(self.newMouseCheck)
         mainLayout.addWidget(self.mouseEntryLabel)
         mainLayout.addWidget(self.plotVisualizationLabel)
         
