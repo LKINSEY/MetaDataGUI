@@ -254,7 +254,7 @@ class cloudTransferWorker(QRunnable):
         print(self.params['sessionStart'])
 
         #acquisition_datetime = datetime.fromisoformat("2024-10-23T15:30:39") #find correct way to state the acq_datetime
-        codeocean_pipeline_id = "a2c94161-7183-46ea-8b70-79b82bb77dc0"
+        codeocean_pipeline_id = "26082c24-faeb-4093-b438-48a19eaba72a"#"a2c94161-7183-46ea-8b70-79b82bb77dc0"
         codeocean_pipeline_mount: Optional[str] = "ophys"
 
         #adding codeocean capsule ID and mount
